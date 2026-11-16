@@ -1,0 +1,48 @@
+# YH 통합 ERP 시뮬레이션 데모 — Oracle Cloud VM 1대에서 전체 스택 실행
+# 외부에는 web(80)만 열고, DB·API는 내부 네트워크로만 통신한다.
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?ORACLE_PASSWORD를 .env에 설정하세요}
+      APP_USER: ${DB_USER:-erp}
+      APP_USER_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 .env에 설정하세요}
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: oracle+oracledb://${DB_USER:-erp}:${DB_PASSWORD}@oracle:1521/?service_name=FREEPDB1
+      LEGACY_OUTBOUND_URL: http://simulator:8100/api/sim/inbound
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+  simulator:
+    build: ./simulator
+    restart: unless-stopped
+    environment:
+      ERP_URL: http://backend:8000
+    depends_on:
+      - backend
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      - backend
+      - simulator
+
+volumes:
+  oracle-data:
