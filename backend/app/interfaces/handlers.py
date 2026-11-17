@@ -138,7 +138,9 @@ def pms_paper_used(db: Session, p: dict[str, Any]) -> None:
 def autocon_transferred(db: Session, p: dict[str, Any]) -> None:
     """오토콘 원단 이송 완료 → 다음 공정 투입 가능 표시."""
     wo = _wo(db, p["wo_no"])
-    events.publish("production", {"wo_no": wo.wo_no, "process": "TRANSFER", "sheets": p.get("sheets")})
+    nxt = next((r for r in wo.routes if r.process != "CORRUGATE" and r.status == "WAIT"), None)
+    events.publish("production", {"wo_no": wo.wo_no, "process": "TRANSFER", "sheets": p.get("sheets"),
+                                  "next_process": nxt.process if nxt else None})
 
 
 @handles("IF-MES-02")
