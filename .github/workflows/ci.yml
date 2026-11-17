@@ -53,5 +53,15 @@ jobs:
         run: |
           curl -fsS -X POST "localhost:8080/api/sim/oms/order?large=true"
           test "$(curl -fsS localhost:8080/api/sales/orders | python3 -c 'import json,sys;print(len(json.load(sys.stdin)))')" = "1"
+      - name: 스케쥴 확정 → 설비 실적 → 생산완료 확인
+        run: |
+          curl -fsS -X POST localhost:8080/api/sim/speed -H 'content-type: application/json' -d '{"speed":60}'
+          PLAN=$(curl -fsS -X POST localhost:8080/api/scheduling/plans | python3 -c 'import json,sys;print(json.load(sys.stdin)["plan_no"])')
+          curl -fsS -X POST "localhost:8080/api/scheduling/plans/$PLAN/confirm"
+          for i in $(seq 1 60); do
+            S=$(curl -fsS localhost:8080/api/sales/orders | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["status"])')
+            [ "$S" = "PRODUCED" ] && exit 0; sleep 3
+          done
+          echo "생산완료 안 됨: $S"; docker compose logs --tail 50 simulator backend; exit 1
       - if: always()
         run: docker compose down -v

@@ -7,6 +7,11 @@ import SimulatorControl from "./pages/SimulatorControl";
 import SalesOrders from "./pages/SalesOrders";
 import MasterTable from "./pages/MasterTable";
 import Placeholder from "./pages/Placeholder";
+import CorrugatorPlan from "./pages/CorrugatorPlan";
+import WorkOrders from "./pages/WorkOrders";
+import ProductionBoard from "./pages/ProductionBoard";
+import Defects from "./pages/Defects";
+import DefectAlerts from "./components/DefectAlerts";
 
 const { Sider, Header, Content } = Layout;
 
@@ -17,6 +22,7 @@ export default function App() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      <DefectAlerts />
       <Sider width={220} theme="dark" breakpoint="lg" collapsedWidth={0}>
         <div style={{ color: "#fff", padding: "18px 20px", fontWeight: 700, fontSize: 16 }}>YH 통합 ERP</div>
         <Menu
@@ -40,6 +46,10 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sales/orders" element={<SalesOrders />} />
             <Route path="/master/:kind" element={<MasterTable />} />
+            <Route path="/scheduling/corrugator" element={<CorrugatorPlan />} />
+            <Route path="/production/work-orders" element={<WorkOrders />} />
+            <Route path="/production/board" element={<ProductionBoard />} />
+            <Route path="/quality/defects" element={<Defects />} />
             <Route path="/system/if-monitor" element={<IfMonitor />} />
             <Route path="/system/simulator" element={<SimulatorControl />} />
             <Route path="*" element={<Placeholder />} />
