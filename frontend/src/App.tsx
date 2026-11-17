@@ -56,7 +56,8 @@ export default function App() {
       <Sider
         width={220} theme="dark" breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
-        style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, height: "100vh", overflow: "auto", zIndex: 20 }}
+        className="app-sider"
+        style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, overflow: "auto", zIndex: 20 }}
       >
         {/* 접힌 상태(폭 0)에서 Menu를 그리면 펼쳐 둔 하위 메뉴가 팝업으로 본문 위에 떠 있는 문제가 있어 숨긴다 */}
         {!collapsed && <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
