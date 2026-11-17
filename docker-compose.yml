@@ -1,30 +1,29 @@
-# YH 통합 ERP 시뮬레이션 데모 — Oracle Cloud VM 1대에서 전체 스택 실행
+# YH 통합 ERP 시뮬레이션 데모 — 클라우드 VM 1대에서 전체 스택 실행
 # 외부에는 web(80)만 열고, DB·API는 내부 네트워크로만 통신한다.
 services:
-  oracle:
-    image: gvenzl/oracle-free:23-slim
+  db:
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?ORACLE_PASSWORD를 .env에 설정하세요}
-      APP_USER: ${DB_USER:-erp}
-      APP_USER_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 .env에 설정하세요}
+      POSTGRES_USER: ${DB_USER:-erp}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 .env에 설정하세요}
+      POSTGRES_DB: erp
     volumes:
-      - oracle-data:/opt/oracle/oradata
+      - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "healthcheck.sh"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 60s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp} -d erp"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   backend:
     build: ./backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: oracle+oracledb://${DB_USER:-erp}:${DB_PASSWORD}@oracle:1521/?service_name=FREEPDB1
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-erp}:${DB_PASSWORD}@db:5432/erp
       LEGACY_OUTBOUND_URL: http://simulator:8100/api/sim/inbound
     depends_on:
-      oracle:
+      db:
         condition: service_healthy
 
   simulator:
@@ -45,4 +44,4 @@ services:
       - simulator
 
 volumes:
-  oracle-data:
+  db-data:

@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "YH 통합 ERP (시뮬레이션 데모)"
-    # 예: oracle+oracledb://erp:pw@oracle:1521/?service_name=FREEPDB1
+    # 예: postgresql+psycopg://erp:pw@db:5432/erp (테스트는 SQLite)
     database_url: str = "sqlite:///./erp-dev.db"
     db_connect_retries: int = 60
     seed_on_startup: bool = True

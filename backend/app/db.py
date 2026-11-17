@@ -34,12 +34,11 @@ def get_db() -> Iterator[Session]:
 
 
 def wait_for_db(retries: int) -> None:
-    """Oracle 컨테이너는 첫 기동에 수십 초가 걸리므로 연결될 때까지 기다린다."""
-    probe = "SELECT 1 FROM DUAL" if engine.dialect.name == "oracle" else "SELECT 1"
+    """DB 컨테이너가 준비될 때까지 기다린다."""
     for attempt in range(1, retries + 1):
         try:
             with engine.connect() as conn:
-                conn.execute(text(probe))
+                conn.execute(text("SELECT 1"))
             return
         except Exception as exc:  # noqa: BLE001
             log.warning("DB 연결 대기 중 (%s/%s): %s", attempt, retries, exc)

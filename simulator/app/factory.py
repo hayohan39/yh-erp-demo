@@ -69,7 +69,7 @@ async def run_work_order(wo: dict[str, Any]) -> None:
                                                 "equipment_code": eq_code})
             minutes = qty / eq["capacity_per_hour"] * 60 + 5  # 셋업 5분
             await _sleep_minutes(minutes)
-            rate = eq["base_defect_rate"] * _rng.uniform(0.5, 1.5)
+            rate = eq["base_defect_rate"] * _rng.uniform(0.5, 1.3)  # 평상시엔 알림 기준(3%) 아래
             if proc == "PRINT" and state.defect_spike:
                 rate = _rng.uniform(0.06, 0.09)
                 state.defect_spike = False  # 다음 인쇄 작업 1건에만 적용

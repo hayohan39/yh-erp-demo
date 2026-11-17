@@ -8,7 +8,7 @@
 ## 구성
 
 ```
-[브라우저] ── web(nginx + React) ──┬── /api      → backend  (FastAPI, ERP 본체) ── Oracle Database Free 23ai
+[브라우저] ── web(nginx + React) ──┬── /api      → backend  (FastAPI, ERP 본체) ── PostgreSQL 16
                                    └── /api/sim  → simulator(FastAPI, 레거시 대역)
               simulator ── IF-xxx 수신 ──▶ backend /api/if/inbound
               backend   ── IF-xxx 송신 ──▶ simulator /api/sim/inbound
@@ -16,10 +16,10 @@
 
 | 디렉터리 | 내용 |
 | --- | --- |
-| `backend/` | ERP API. `app/interfaces/` I/F 게이트웨이·18종 카탈로그·핸들러, `app/models/` ORM(Oracle), `app/seed.py` 가상 기준정보 |
+| `backend/` | ERP API. `app/interfaces/` I/F 게이트웨이·18종 카탈로그·핸들러, `app/models/` ORM(PostgreSQL, 테스트는 SQLite), `app/seed.py` 가상 기준정보 |
 | `simulator/` | 레거시 I/F 시뮬레이터. 시작·정지·배속·수동 주문·데모 초기화 |
 | `frontend/` | React + TypeScript + Ant Design. 9개 모듈 메뉴, 대시보드, 수주 현황, 기준정보, I/F 모니터, 시뮬레이터 제어 |
-| `docker-compose.yml` | oracle · backend · simulator · web 4개 서비스 |
+| `docker-compose.yml` | db(PostgreSQL) · backend · simulator · web 4개 서비스 |
 | `scripts/deploy.sh` | Oracle Cloud VM 배포 스크립트 (Actions가 실행) |
 | `docs/oracle-cloud-setup.md` | **OCI 계정·VM·시크릿 설정 안내** |
 
@@ -28,7 +28,7 @@
 모든 실행은 클라우드에서 합니다. 개인 PC에 설치할 것은 없습니다.
 
 - **배포**: Oracle Cloud VM(Ampere A1, Always Free) 1대. `main` 머지 시 GitHub Actions가 자동 배포합니다. 최초 설정은 [docs/oracle-cloud-setup.md](docs/oracle-cloud-setup.md)를 따르세요.
-- **검증**: PR마다 GitHub Actions(CI)가 백엔드 테스트, 프론트 빌드, Oracle 포함 전체 스택 기동과 주문 I/F 흐름을 확인합니다.
+- **검증**: PR마다 GitHub Actions(CI)가 백엔드 테스트, 프론트 빌드, PostgreSQL 포함 전체 스택 기동과 주문 I/F 흐름을 확인합니다.
 
 ## 지금 동작하는 흐름
 

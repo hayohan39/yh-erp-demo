@@ -22,11 +22,9 @@ if ! sudo iptables -C INPUT -p tcp --dport "$WEB_PORT" -j ACCEPT 2>/dev/null; th
 fi
 
 # 비밀번호는 워크플로가 환경변수로 넘긴다. .env는 VM에만 존재한다.
-: "${ORACLE_PASSWORD:?ORACLE_PASSWORD가 필요합니다}"
 : "${DB_PASSWORD:?DB_PASSWORD가 필요합니다}"
 umask 077
 cat > .env <<ENV
-ORACLE_PASSWORD=${ORACLE_PASSWORD}
 DB_USER=${DB_USER:-erp}
 DB_PASSWORD=${DB_PASSWORD}
 WEB_PORT=${WEB_PORT}
@@ -36,7 +34,7 @@ echo "[deploy] 빌드 및 기동"
 $DOCKER compose up -d --build --remove-orphans
 $DOCKER image prune -f >/dev/null
 
-echo "[deploy] 헬스체크 대기 (Oracle 첫 기동은 수 분 걸릴 수 있음)"
+echo "[deploy] 헬스체크 대기 "
 for _ in $(seq 1 60); do
   if curl -fsS "http://localhost:${WEB_PORT}/api/health" >/dev/null 2>&1; then
     echo "[deploy] 완료"; $DOCKER compose ps; exit 0

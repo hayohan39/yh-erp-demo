@@ -34,7 +34,7 @@ jobs:
         if: env.HAS_SECRETS == 'true'
         run: |
           ssh -i ~/.ssh/id_oci "${{ secrets.OCI_USER || 'ubuntu' }}@${{ secrets.OCI_HOST }}" \
-            "ORACLE_PASSWORD='${{ secrets.ORACLE_PASSWORD }}' DB_PASSWORD='${{ secrets.DB_PASSWORD }}' bash ~/yh-erp-demo/scripts/deploy.sh"
+            "DB_PASSWORD='${{ secrets.DB_PASSWORD }}' bash ~/yh-erp-demo/scripts/deploy.sh"
       - name: 접속 주소
         if: env.HAS_SECRETS == 'true'
         run: echo "::notice::데모 주소 http://${{ secrets.OCI_HOST }}/"
