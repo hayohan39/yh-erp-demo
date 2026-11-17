@@ -29,7 +29,11 @@ export class Stage {
   private fly?: { from: THREE.Vector3; to: THREE.Vector3; camFrom: THREE.Vector3; camTo: THREE.Vector3; t: number };
   private v = new THREE.Vector3();
   onPick?: (id: string | null) => void;
+  /** WebGL 컨텍스트가 끊기고 복구되지 않을 때 호출(페이지가 무대를 새로 만든다). */
+  onContextLost?: () => void;
   autoRotate = false;
+  private lostTimer = 0;
+  private baseFov = 42;
 
   constructor(private host: HTMLElement, opt: StageOptions) {
     const w = host.clientWidth || 800, h = host.clientHeight || 500;
@@ -65,6 +69,16 @@ export class Stage {
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
+    this.fitFov(w / h);
+    this.camera.updateProjectionMatrix();
+
+    // 모바일에서 탭 전환·메모리 부족으로 컨텍스트가 끊기면 three.js가 복구를 시도한다.
+    // 1.5초 안에 복구되지 않으면 무대를 새로 만들도록 알린다.
+    this.renderer.domElement.addEventListener("webglcontextlost", () => {
+      window.clearTimeout(this.lostTimer);
+      this.lostTimer = window.setTimeout(() => this.onContextLost?.(), 1500);
+    });
+    this.renderer.domElement.addEventListener("webglcontextrestored", () => window.clearTimeout(this.lostTimer));
 
     // 클릭(드래그가 아닌 짧은 탭)만 선택으로 본다
     let down: [number, number] | null = null;
@@ -156,16 +170,29 @@ export class Stage {
     });
   }
 
+  /**
+   * 세로로 긴(폭이 좁은) 화면에서는 가로 시야가 좁아져 공장 양 끝이 잘린다.
+   * 가로세로 1.2:1 화면과 같은 가로 시야가 나오도록 세로 시야각을 넓힌다(상한 65°).
+   */
+  private fitFov(aspect: number) {
+    const ref = 1.2;
+    if (aspect >= ref) { this.camera.fov = this.baseFov; return; }
+    const half = Math.atan(Math.tan((this.baseFov * Math.PI) / 360) * ref / aspect);
+    this.camera.fov = Math.min(65, (half * 360) / Math.PI);
+  }
+
   private resize() {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     if (!w || !h) return;
     this.camera.aspect = w / h;
+    this.fitFov(w / h);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    window.clearTimeout(this.lostTimer);
     this.ro.disconnect();
     this.controls.dispose();
     this.scene.traverse((o) => {
@@ -176,17 +203,30 @@ export class Stage {
     });
     clearShared();
     this.renderer.dispose();
+    // 컨텍스트를 바로 반납(가비지 수집을 기다리면 화면을 오갈 때 컨텍스트가 쌓인다)
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 }
 
+let glOk: boolean | undefined;
+/**
+ * WebGL 지원 여부(한 번만 검사해 기억).
+ * 예전에는 화면이 다시 그려질 때마다 시험용 캔버스로 WebGL 컨텍스트를 새로 만들고 반납하지 않아,
+ * 브라우저 한도(모바일은 특히 낮음)를 넘으면 가장 오래된 컨텍스트, 곧 3D 맵 자신이 끊겨
+ * 라벨만 남고 물체가 사라졌다.
+ */
 export function webglAvailable(): boolean {
+  if (glOk !== undefined) return glOk;
   try {
     const c = document.createElement("canvas");
-    return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl")));
+    const g = window.WebGLRenderingContext ? (c.getContext("webgl2") || c.getContext("webgl")) : null;
+    glOk = !!g;
+    g?.getExtension("WEBGL_lose_context")?.loseContext();
   } catch {
-    return false;
+    glOk = false;
   }
+  return glOk;
 }
 
 // ---------------------------------------------------------------- 저폴리 모델 도우미

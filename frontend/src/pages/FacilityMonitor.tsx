@@ -243,6 +243,7 @@ export default function FacilityMonitor() {
   const [d, setD] = useState<FacilityResp>();
   const [sel, setSel] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const [glKey, setGlKey] = useState(0); // WebGL 컨텍스트가 끊기면 올려서 무대를 새로 만든다
   const hist = useRef(new Map<string, number[]>());
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage>();
@@ -266,6 +267,7 @@ export default function FacilityMonitor() {
     if (!gl || !host.current) return;
     const s = new Stage(host.current, { camera: HOME.camera, target: HOME.target, background: "#0b1220", fog: [170, 300] });
     stage.current = s;
+    s.onContextLost = () => setGlKey((k) => k + 1);
     const rigs = buildSite(s);
     const mv = new Movers(s.scene);
     labelEls.current.forEach((v, id) => s.setLabel(id, v.el, v.pos));
@@ -315,7 +317,7 @@ export default function FacilityMonitor() {
       mv.step(t);
     });
     return () => { s.dispose(); stage.current = undefined; };
-  }, [gl]);
+  }, [gl, glKey]);
   useEffect(() => { if (stage.current) stage.current.autoRotate = spinning; }, [spinning]);
 
   const label = (id: string, pos: V3) => (el: HTMLDivElement | null) => {
@@ -351,7 +353,7 @@ export default function FacilityMonitor() {
       <Row gutter={12}>
         <Col xs={24} xl={18}>
           {gl ? (
-            <div ref={host} style={{ position: "relative", height: "min(62vh, 600px)", minHeight: 400, borderRadius: 10, overflow: "hidden", background: "#0b1220" }}>
+            <div ref={host} style={{ position: "relative", isolation: "isolate", height: "min(62vh, 600px)", minHeight: 400, borderRadius: 10, overflow: "hidden", background: "#0b1220" }}>
               {Object.entries(SITE).map(([code, s]) => {
                 const f = facs.find((x) => x.code === code);
                 const warn = f?.status === "WARN";

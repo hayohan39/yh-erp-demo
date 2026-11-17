@@ -66,6 +66,7 @@ function Equipment3D({ toggle }: { toggle: ReactNode }) {
   const [log, setLog] = useState<LogRow[]>([]);
   const [sel, setSel] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const [glKey, setGlKey] = useState(0); // WebGL 컨텍스트가 끊기면 올려서 무대를 새로 만든다
   const [, setTick] = useState(0);
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage>();
@@ -95,6 +96,7 @@ function Equipment3D({ toggle }: { toggle: ReactNode }) {
     const p = buildPlant(s);
     const mv = new Movers(s.scene);
     stage.current = s; plant.current = p; movers.current = mv;
+    s.onContextLost = () => setGlKey((k) => k + 1);
     labelEls.current.forEach((v, id) => s.setLabel(id, v.el, v.pos, v.maxDist));
     s.onPick = (id) => {
       setSel(id);
@@ -132,7 +134,7 @@ function Equipment3D({ toggle }: { toggle: ReactNode }) {
       mv.step(t);
     });
     return () => { s.dispose(); stage.current = undefined; };
-  }, []);
+  }, [glKey]);
 
   useEffect(() => { if (stage.current) stage.current.autoRotate = spinning; }, [spinning]);
 
@@ -251,7 +253,7 @@ function Equipment3D({ toggle }: { toggle: ReactNode }) {
       </Row>
       <Row gutter={12}>
         <Col xs={24} xl={18}>
-          <div ref={host} style={{ position: "relative", height: "min(66vh, 640px)", minHeight: 420, borderRadius: 10, overflow: "hidden", background: "#0b1220" }}>
+          <div ref={host} style={{ position: "relative", isolation: "isolate", height: "min(66vh, 640px)", minHeight: 420, borderRadius: 10, overflow: "hidden", background: "#0b1220" }}>
             <style>{LABEL_CSS}</style>
             {/* 구역 라벨 */}
             {ZONES.map((z) => (

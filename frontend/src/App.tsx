@@ -56,11 +56,16 @@ export default function App() {
       <Sider
         width={220} theme="dark" breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
-        style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, height: "100vh", overflow: "auto", zIndex: 20 }}
+        className="app-sider"
+        style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, overflow: "auto", zIndex: 20 }}
       >
         {/* 접힌 상태(폭 0)에서 Menu를 그리면 펼쳐 둔 하위 메뉴가 팝업으로 본문 위에 떠 있는 문제가 있어 숨긴다 */}
         {!collapsed && <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-          <div style={{ color: "#fff", padding: "18px 20px", fontWeight: 700, fontSize: 16 }}>YH 통합 ERP</div>
+          <div style={{ color: "#fff", padding: "12px 8px 12px 20px", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>YH 통합 ERP</span>
+            <Button type="text" aria-label="메뉴 닫기" title="메뉴 닫기" onClick={() => setCollapsed(true)}
+              icon={<MenuFoldOutlined style={{ fontSize: 18, color: "rgba(255,255,255,.75)" }} />} />
+          </div>
           <Menu
             theme="dark"
             mode="inline"
@@ -81,8 +86,9 @@ export default function App() {
       </Sider>
       <Layout>
         <Header style={{ background: "#fff", padding: "0 16px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, position: "sticky", top: 0, zIndex: 10 }}>
-          <Button type="text" aria-label="메뉴 열기/닫기" onClick={() => setCollapsed((c) => !c)}
-            icon={collapsed ? <MenuUnfoldOutlined style={{ fontSize: 18 }} /> : <MenuFoldOutlined style={{ fontSize: 18 }} />} />
+          {/* 닫기 버튼은 사이드바 안(제목 옆)에 있고, 사이드바가 닫혀 있을 때만 여기서 연다 */}
+          {collapsed && <Button type="text" aria-label="메뉴 열기" title="메뉴 열기" onClick={() => setCollapsed(false)}
+            icon={<MenuUnfoldOutlined style={{ fontSize: 18 }} />} />}
           <Typography.Title level={4} style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {title ?? ""}
           </Typography.Title>
