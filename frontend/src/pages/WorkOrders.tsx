@@ -22,7 +22,7 @@ export default function WorkOrders() {
   useEvents(["work_order", "production", "reset"], () => void load());
 
   return (
-    <Table rowKey="wo_no" dataSource={rows} size="middle" pagination={{ pageSize: 20 }} scroll={{ x: true }}
+    <Table rowKey="wo_no" dataSource={rows} size="middle" pagination={{ pageSize: 20 }} scroll={{ x: "max-content" }}
       columns={[
         { title: "지시번호", dataIndex: "wo_no" },
         { title: "수주번호", dataIndex: "order_no" },

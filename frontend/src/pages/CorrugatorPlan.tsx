@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Empty, Row, Space, Statistic, Table, Tag, Tooltip, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { api, post } from "../api/client";
+import { api, errMsg, post } from "../api/client";
 import { useEvents } from "../api/useEvents";
 
 interface Slot { item_code: string; ups: number; blank_w: number; sheets: number; order_no: string; customer_name: string }
@@ -49,7 +49,7 @@ export default function CorrugatorPlan() {
 
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
-    try { await fn(); message.success(ok); } catch (e) { message.error(String(e)); }
+    try { await fn(); message.success(ok); } catch (e) { message.error(errMsg(e)); }
     setBusy(false);
     load();
   };
@@ -78,12 +78,14 @@ export default function CorrugatorPlan() {
             <Col xs={12} md={6}><Card><Statistic title="원지 절감" value={plan.saved_paper_kg} precision={0} suffix="kg" /></Card></Col>
             <Col xs={12} md={6}><Card><Statistic title="원지 비용 절감" value={plan.saved_amount} suffix="원" valueStyle={{ color: "#16a34a" }} /></Card></Col>
           </Row>
-          <Alert type="success" showIcon
-            message={`${plan.plan_no} · 수주 ${plan.order_count}건을 런 ${plan.runs.length}개로 묶어 수작업 계획보다 트림 손실을 ${(improve * 100).toFixed(1)}%p 줄였습니다.`}
+          <Alert type={improve > 0.0005 ? "success" : "info"} showIcon
+            message={improve > 0.0005
+              ? `${plan.plan_no} · 수주 ${plan.order_count}건을 런 ${plan.runs.length}개로 묶어 수작업 계획보다 트림 손실을 ${(improve * 100).toFixed(1)}%p 줄였습니다.`
+              : `${plan.plan_no} · 수주 ${plan.order_count}건을 런 ${plan.runs.length}개로 배치했습니다. 이번 수주 구성에서는 함께 걸 품목이 없어 수작업 계획과 트림 손실이 같습니다. 대기 수주가 많을수록 조합 효과가 커집니다.`}
             description="수작업 계획은 품목마다 단독으로 가장 맞는 원지 폭을 고르는 방식으로 가정했습니다."
             action={<Tag color={plan.status === "CONFIRMED" ? "green" : "gold"}>{plan.status === "CONFIRMED" ? "확정" : "초안"}</Tag>} />
           <Card title="골판지기 런 (원지 폭 조합)" size="small">
-            <Table rowKey="seq" dataSource={plan.runs} size="small" pagination={false} scroll={{ x: true }}
+            <Table rowKey="seq" dataSource={plan.runs} size="small" pagination={false} scroll={{ x: "max-content" }}
               columns={[
                 { title: "순서", dataIndex: "seq", width: 60 },
                 { title: "원단", dataIndex: "board_spec" },
