@@ -27,7 +27,7 @@
 
 모든 실행은 클라우드에서 합니다. 개인 PC에 설치할 것은 없습니다.
 
-- **배포**: AWS Lightsail 서울 리전 서버(2GB, 월 $12, 신규 가입 크레딧으로 충당) 1대. `main` 머지 시 GitHub Actions가 자동 배포합니다. 최초 설정은 [docs/aws-lightsail-setup.md](docs/aws-lightsail-setup.md)를 따르세요.
+- **배포**: AWS Lightsail 서버(2GB, 월 $12, 신규 가입 크레딧으로 충당) 1대. 리전은 계정에 지정된 곳(한국 가입 시 대개 시드니). `main` 머지 시 GitHub Actions가 자동 배포합니다. 최초 설정은 [docs/aws-lightsail-setup.md](docs/aws-lightsail-setup.md)를 따르세요.
 - **검증**: PR마다 GitHub Actions(CI)가 백엔드 테스트, 프론트 빌드, PostgreSQL 포함 전체 스택 기동과 주문 I/F 흐름을 확인합니다.
 
 ## 지금 동작하는 흐름
