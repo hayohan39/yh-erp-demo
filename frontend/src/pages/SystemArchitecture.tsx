@@ -11,26 +11,27 @@ interface IfEvent { id: number; if_id: string; direction: string; source: string
 type Sel = { kind: "sys" | "mod"; key: string } | null;
 
 // ---- 배치(viewBox 1400 x 860)
-const ERP = { x: 470, y: 100, w: 430, h: 560 };
-const TILE = { x: ERP.x + 16, y: ERP.y + 76, w: 122, h: 120, gx: 15, gy: 18 };
-const GW = { x: ERP.x + 16, y: ERP.y + 76 + 3 * 120 + 2 * 18 + 10, w: ERP.w - 32, h: 58 };
+const ERP = { x: 470, y: 100, w: 430, h: 546 };
+const TILE = { x: ERP.x + 16, y: ERP.y + 76, w: 122, h: 110, gx: 15, gy: [44, 16] };
+const GW = { x: ERP.x + 16, y: ERP.y + 76 + 3 * 110 + 44 + 16 + 12, w: ERP.w - 32, h: 56 };
 /** 모듈 타일 위치(MODULES 배열 순서대로 3x3). */
 function tileRect(key: string) {
   const i = MODULES.findIndex((m) => m.key === key);
   const col = i % 3, row = Math.floor(i / 3);
-  return { x: TILE.x + col * (TILE.w + TILE.gx), y: TILE.y + row * (TILE.h + TILE.gy), w: TILE.w, h: TILE.h, col, row };
+  return { x: TILE.x + col * (TILE.w + TILE.gx), y: TILE.y + row * TILE.h + TILE.gy.slice(0, row).reduce((a, b) => a + b, 0), w: TILE.w, h: TILE.h, col, row };
 }
 const BOX: Record<string, { x: number; y: number; w: number; h: number }> = {
   OMS: { x: 30, y: 92, w: 250, h: 150 },
   MES: { x: 30, y: 294, w: 250, h: 170 },
   PMS: { x: 30, y: 516, w: 250, h: 150 },
-  "골게터 POP": { x: 1100, y: 92, w: 270, h: 62 },
-  "에볼/썬라이즈": { x: 1100, y: 166, w: 270, h: 62 },
-  "인쇄 5호기": { x: 1100, y: 240, w: 270, h: 62 },
-  위아고: { x: 1100, y: 446, w: 270, h: 62 },
-  로지스팟: { x: 1100, y: 520, w: 270, h: 62 },
-  오토콘: { x: 1100, y: 372, w: 270, h: 62 },
-  더존: { x: 1100, y: 594, w: 270, h: 62 },
+  // 오른쪽은 연결되는 모듈 높이 순서대로 둔다(선이 서로 엇갈리지 않게)
+  로지스팟: { x: 1100, y: 92, w: 270, h: 58 },
+  위아고: { x: 1100, y: 160, w: 270, h: 58 },
+  "골게터 POP": { x: 1100, y: 258, w: 270, h: 58 },
+  "에볼/썬라이즈": { x: 1100, y: 326, w: 270, h: 58 },
+  "인쇄 5호기": { x: 1100, y: 394, w: 270, h: 58 },
+  오토콘: { x: 1100, y: 462, w: 270, h: 58 },
+  더존: { x: 1100, y: 586, w: 270, h: 58 },
 };
 const GROUP = {
   legacy: { color: "#34d399", label: "사내 레거시", tag: "I/F 수정" },
@@ -55,47 +56,48 @@ const sample = (c: Cubic, n = 24): Pt[] => Array.from({ length: n + 1 }, (_, i) 
 /**
  * 시스템별 IN(→ERP)·OUT(ERP→) 연결선. ERP 테두리에서 끝나지 않고 실제로 데이터를 받는 모듈 타일까지 잇는다.
  * - 같은 쪽 바깥 열의 모듈: 타일 옆면 포트로 바로 들어간다(여러 시스템이면 포트를 나눠 쓴다).
- * - 반대쪽 열의 모듈: 타일 사이 통로(행 사이 간격)를 따라 가로질러 타일 아래면으로 들어간다.
+ * - 가운데·반대쪽 열의 모듈: 1·2행 사이 통로의 전용 차선을 따라 들어간다. 차선·꺾는 위치를 정해 두어 선이 엇갈리지 않는다.
+ *   위 차선(0·1) = 영업관리 아래면으로 올라감(OMS는 왼쪽, 위아고는 오른쪽에서), 아래 차선(2·3) = 생산관리 윗면으로 내려감(MES).
  */
 interface Link { inC: Cubic; outC: Cubic; inD: string; outD: string; inPts: Pt[]; outPts: Pt[]; left: boolean; ends: Pt[] }
 const polyTail = (pts: Pt[]) => pts.map((p) => ` L${p[0]},${p[1]}`).join("");
+const laneY = (k: number) => TILE.y + TILE.h + 10 + k * 8;
+/** 통로 경로: [IN 차선, OUT 차선], [IN 꺾는 x, OUT 꺾는 x], 들어가는 면 */
+const GUTTER: Record<string, { lanes: [number, number]; xs: (t: ReturnType<typeof tileRect>) => [number, number]; face: "bottom" | "top" }> = {
+  OMS: { lanes: [0, 1], xs: (t) => [t.x + 16, t.x + 28], face: "bottom" },
+  위아고: { lanes: [0, 1], xs: (t) => [t.x + t.w - 16, t.x + t.w - 28], face: "bottom" },
+  MES: { lanes: [2, 3], xs: (t) => [t.x + 40, t.x + 28], face: "top" },
+};
 function buildLinks(): Record<string, Link> {
   const out: Record<string, Link> = {};
   const groups = new Map<string, SystemDef[]>(); // 같은 타일 옆면을 쓰는 시스템 묶음
-  const gutter = new Map<string, SystemDef[]>(); // 같은 통로를 쓰는 시스템 묶음
-  SYSTEMS.forEach((s) => {
-    const b = BOX[s.key], left = b.x < ERP.x, t = tileRect(s.modules[0]);
-    const direct = left ? t.col === 0 : t.col === 2;
-    const map = direct ? groups : gutter, k = direct ? `${s.modules[0]}:${left}` : `row${t.row}`;
-    map.set(k, [...(map.get(k) ?? []), s]);
-  });
   const sy = (s: SystemDef) => BOX[s.key].y + BOX[s.key].h / 2;
+  SYSTEMS.forEach((s) => {
+    if (GUTTER[s.key]) return;
+    const k = `${s.modules[0]}:${BOX[s.key].x < ERP.x}`;
+    groups.set(k, [...(groups.get(k) ?? []), s]);
+  });
   SYSTEMS.forEach((s) => {
     const b = BOX[s.key], left = b.x < ERP.x, t = tileRect(s.modules[0]);
     const nx = left ? b.x + b.w : b.x, ex = left ? ERP.x : ERP.x + ERP.w;
     const y0 = sy(s);
-    let inTail: Pt[], outTail: Pt[], eyIn: number, eyOut: number;
-    const direct = left ? t.col === 0 : t.col === 2;
-    if (direct) {
+    let inTail: Pt[], outTail: Pt[];
+    const g = GUTTER[s.key];
+    if (!g) {
       const peers = groups.get(`${s.modules[0]}:${left}`)!.sort((a, c) => sy(a) - sy(c));
-      const i = peers.indexOf(s), n = peers.length;
-      const py = n === 1 ? t.y + t.h / 2 : t.y + 18 + (i * (t.h - 36)) / (n - 1);
+      const n = peers.length * 2, i = peers.indexOf(s) * 2;
+      const port = (k: number) => (n === 2 ? t.y + t.h / 2 + (k ? 5 : -5) : t.y + 14 + ((i + k) * (t.h - 28)) / (n - 1));
       const tx = left ? t.x : t.x + t.w;
-      eyIn = py - 4; eyOut = py + 4;
-      inTail = [[tx, eyIn]];
-      outTail = [[tx, eyOut]];
+      inTail = [[tx, port(0)]];
+      outTail = [[tx, port(1)]];
     } else {
-      // 타일 아래 통로(행 사이)로 가로지른다
-      const peers = gutter.get(`row${t.row}`)!;
-      const i = peers.indexOf(s);
-      const gy = t.y + t.h + TILE.gy / 2 + (i - (peers.length - 1) / 2) * 7;
-      const cx = t.x + t.w / 2 + (i - (peers.length - 1) / 2) * 22;
-      eyIn = gy - 2; eyOut = gy + 2;
-      inTail = [[cx - 4, eyIn], [cx - 4, t.y + t.h]];
-      outTail = [[cx + 4, eyOut], [cx + 4, t.y + t.h]];
+      const [xi, xo] = g.xs(t);
+      const fy = g.face === "bottom" ? t.y + t.h : t.y;
+      inTail = [[xi, laneY(g.lanes[0])], [xi, fy]];
+      outTail = [[xo, laneY(g.lanes[1])], [xo, fy]];
     }
-    const inC = cubic([nx, y0 - 6], [ex, eyIn]);
-    const outBack = cubic([nx, y0 + 6], [ex, eyOut]); // 바깥 → ERP 방향으로 만든 뒤 뒤집는다
+    const inC = cubic([nx, y0 - 5], [ex, inTail[0][1]]);
+    const outBack = cubic([nx, y0 + 5], [ex, outTail[0][1]]); // 바깥 → ERP 방향으로 만든 뒤 뒤집는다
     const outPts = [...[...outTail].reverse(), ...sample(outBack).reverse()];
     const outC: Cubic = [outBack[3], outBack[2], outBack[1], outBack[0]];
     out[s.key] = {
@@ -170,7 +172,6 @@ export default function SystemArchitecture() {
   const sysOn = (s: SystemDef) => !active || (active.kind === "sys" ? active.key === s.key : s.modules.includes(active.key));
   const modOn = (k: string) => !active || (active.kind === "mod" ? active.key === k : SYSTEMS.find((s) => s.key === active.key)?.modules.includes(k));
   const isHot = (k: string) => Date.now() - (hot[k] ?? 0) < 1800;
-  const cnt = (sys: string, dir: string) => stats.filter((x) => x.system === sys && x.direction === dir).reduce((a, b) => a + b.total, 0);
   const total = stats.reduce((a, b) => a + b.total, 0);
   const statOf = (id: string) => stats.find((s) => s.if_id === id);
 
@@ -226,8 +227,9 @@ export default function SystemArchitecture() {
                 ))}
               </g>
               <text x={30} y={84} fill={GROUP.legacy.color} fontSize={13} fontWeight={700}>사내 레거시 (서브 시스템)</text>
-              <text x={1100} y={84} fill={GROUP.equip.color} fontSize={13} fontWeight={700}>생산 설비</text>
-              <text x={1100} y={364} fill={GROUP.ext.color} fontSize={13} fontWeight={700}>외부 시스템</text>
+              <text x={1100} y={84} fill={GROUP.ext.color} fontSize={13} fontWeight={700}>외부 시스템 · 물류·세금계산서</text>
+              <text x={1100} y={250} fill={GROUP.equip.color} fontSize={13} fontWeight={700}>생산 설비 · 반송</text>
+              <text x={1100} y={578} fill={GROUP.ext.color} fontSize={13} fontWeight={700}>외부 시스템 · 재무</text>
 
               {/* 급여 → SECOM (1차 범위 외) */}
               <g opacity={0.6}>
@@ -245,7 +247,7 @@ export default function SystemArchitecture() {
                   const { x, y } = tileRect(m.key);
                   const on = modOn(m.key);
                   const isSel = sel?.kind === "mod" && sel.key === m.key;
-                  const lines = wrap(m.funcs, TILE.w - 18, 10).slice(0, 5);
+                  const lines = wrap(m.funcs, TILE.w - 18, 10).slice(0, 4);
                   return (
                     <g key={m.key} className="sa-hit" opacity={on ? 1 : 0.28} style={{ transition: "opacity .3s" }}
                       onClick={(e) => { e.stopPropagation(); choose({ kind: "mod", key: m.key }); }}
@@ -313,8 +315,6 @@ export default function SystemArchitecture() {
                     ) : (
                       <text x={b.x + 18} y={b.y + 48} fill="#94a3b8" fontSize={11}>{s.desc} · {s.funcs.join(" · ")}</text>
                     )}
-                    <text x={b.x + b.w - 12} y={b.y + (big ? b.h - 34 : 27)} textAnchor="end" fill={IN_C} fontSize={11}>→ERP {cnt(s.key, "IN")}</text>
-                    <text x={b.x + b.w - 12} y={b.y + (big ? b.h - 16 : 48)} textAnchor="end" fill={OUT_C} fontSize={11}>ERP→ {cnt(s.key, "OUT")}</text>
                   </g>
                 );
               })}
