@@ -92,3 +92,12 @@ def test_factory_after_full_flow(client):
     assert all(m["status"] == "IDLE" for m in fac["machines"])
     assert fac["paper_used_kg"] > 0 and fac["products"]["total_qty"] > 0
     assert any(p["stock_kg"] < p["opening_kg"] for p in fac["papers"])
+
+
+def test_facility_monitor(client):
+    d = client.get("/api/monitor/facility").json()
+    codes = {f["code"] for f in d["facilities"]}
+    assert {"BOILER", "STARCH", "AIR", "ELEC", "WASTE", "WATER", "ROLL_WH", "FG_WH", "SAFETY"} == codes
+    assert d["load"] == 0 and d["energy"]["power_kw"] > 0
+    for f in d["facilities"]:
+        assert f["status"] in ("OK", "WARN") and f["metrics"]

@@ -1,5 +1,5 @@
 import {
-  AppstoreOutlined, BarChartOutlined, CalculatorOutlined, CarOutlined, DashboardOutlined,
+  BarChartOutlined, ClusterOutlined, ControlOutlined, CalculatorOutlined, CarOutlined, DashboardOutlined,
   DatabaseOutlined, ExperimentOutlined, ApiOutlined, ScheduleOutlined, ShoppingCartOutlined,
   ToolOutlined, InboxOutlined, RadarChartOutlined,
 } from "@ant-design/icons";
@@ -18,10 +18,11 @@ export const MENU: MenuNode[] = [
   {
     key: "monitor", label: "실시간 모니터링", icon: <RadarChartOutlined />,
     children: [
-      { key: "/monitor/factory", label: "공장 모니터링 맵" },
-      { key: "/monitor/interfaces", label: "시스템 연동 맵" },
+      { key: "/monitor/equipment", label: "설비 모니터링" },
+      { key: "/monitor/facility", label: "공장 모니터링" },
     ],
   },
+  { key: "/architecture", label: "시스템 구성", icon: <ClusterOutlined /> },
   {
     key: "master", label: "기준정보", icon: <DatabaseOutlined />,
     children: [
@@ -127,16 +128,15 @@ export const MENU: MenuNode[] = [
       { key: "/mis/freight", label: "운반비분석" },
     ],
   },
-  {
-    key: "common", label: "연동·시스템", icon: <AppstoreOutlined />,
-    children: [
-      { key: "/system/if-monitor", label: "I/F 모니터", icon: <ApiOutlined /> },
-      { key: "/system/simulator", label: "시뮬레이터 제어" },
-    ],
-  },
 ];
 
-export function findLabel(path: string, nodes: MenuNode[] = MENU): string | undefined {
+/** 사이드바 하단 '관리자용' 구역: 시연 진행·연동 점검용 도구(업무 메뉴와 분리). */
+export const ADMIN_MENU: MenuNode[] = [
+  { key: "/system/if-monitor", label: "I/F 모니터", icon: <ApiOutlined /> },
+  { key: "/system/simulator", label: "시뮬레이터 제어", icon: <ControlOutlined /> },
+];
+
+export function findLabel(path: string, nodes: MenuNode[] = [...MENU, ...ADMIN_MENU]): string | undefined {
   for (const n of nodes) {
     if (n.key === path) return n.label;
     const c = n.children && findLabel(path, n.children);
