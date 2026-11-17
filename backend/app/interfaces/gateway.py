@@ -62,7 +62,7 @@ def _to_dict(m: IfMessage) -> dict[str, Any]:
     }
 
 
-_KEY_FIELDS = ("shipment_no", "invoice_no", "wo_no", "erp_order_no", "order_no", "oms_order_no", "plan_no", "file_name")
+_KEY_FIELDS = ("po_no", "shipment_no", "invoice_no", "wo_no", "erp_order_no", "order_no", "oms_order_no", "plan_no", "file_name")
 
 
 def _event_dict(m: IfMessage) -> dict[str, Any]:

@@ -17,6 +17,7 @@ const SOURCES: Record<string, Source[]> = {
     { title: "원지", url: "/api/master/paper-grades", cols: [["code", "코드"], ["name", "원지명"], ["paper_kind", "구분", "code"], ["basis_weight", "평량(g/m²)", "num"], ["price_per_kg", "kg 단가", "won"]] },
     { title: "원단 규격 (표면지 / 골심지 / 이면지)", url: "/api/master/board-specs", cols: [["code", "코드"], ["flute", "골"], ["outer_liner", "표면지"], ["medium", "골심지"], ["inner_liner", "이면지"]] },
   ],
+  warehouses: [{ url: "/api/master/warehouses", cols: [["code", "코드"], ["name", "창고명"], ["site", "사업장"], ["kind", "구분", "code"]] }],
   equipment: [{ url: "/api/master/equipment", cols: [["code", "코드"], ["name", "설비명"], ["process", "공정", "code"], ["legacy_system", "연동 시스템"], ["capacity_per_hour", "시간당 능력(매)", "num"], ["base_defect_rate", "기본 불량률", "pct"]] }],
 };
 

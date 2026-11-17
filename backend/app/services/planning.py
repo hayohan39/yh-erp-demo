@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.interfaces import gateway
 from app.models import (
-    BoardSpec, CorrugatorRun, ItemBox, PaperGrade, RunSlot, SalesOrder, SalesOrderLine, SchedulePlan,
+    BoardSpec, CorrugatorRun, ItemBox, PaperGrade, PaperRequirement, RunSlot, SalesOrder, SalesOrderLine, SchedulePlan,
     WorkOrder, WorkOrderRoute,
 )
 from app.models._types import now
@@ -158,6 +158,9 @@ def _send_instructions(db: Session, plan: SchedulePlan, wos: dict[int, WorkOrder
     gateway.send(db, "IF-EQ-01", {"plan_no": plan.plan_no, "runs": runs})
     gateway.send(db, "IF-EXT-03", {"plan_no": plan.plan_no,
                                    "transfers": [s for r in runs for s in r["slots"]]})
+    for c, kg in need.items():  # 원지 소요관리·자동발주 근거
+        db.add(PaperRequirement(plan_no=plan.plan_no, paper_code=c, kg=round(kg, 1)))
+    db.commit()
     gateway.send(db, "IF-PMS-02", {"plan_no": plan.plan_no,
                                    "requirements": [{"paper_code": c, "kg": round(kg, 1)} for c, kg in need.items()]})
     print_wos = [wo_payload(w, "PRINT") for w in all_wos if any(r.process == "PRINT" for r in w.routes)]

@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.interfaces.gateway import handles
 from app.models import (
-    Defect, ItemBox, PaperUsage, Partner, ProductionResult, ProductStock, SalesOrder, SalesOrderLine, WorkOrder,
+    Defect, ItemBox, PaperUsage, Partner, ProductionResult, SalesOrder, SalesOrderLine, WorkOrder,
 )
 from app.models._types import now
-from app.services import events
+from app.services import events, inventory, ops_hooks
 
 
 def _next_order_no(db: Session, d: date) -> str:
@@ -132,6 +132,8 @@ def pms_paper_used(db: Session, p: dict[str, Any]) -> None:
     for r in p["rolls"]:
         db.add(PaperUsage(wo_no=wo.wo_no, roll_no=r["roll_no"], paper_code=r["paper_code"],
                           used_kg=float(r["used_kg"])))
+        inventory.move(db, "PAPER", "OUT", r["paper_code"], float(r["used_kg"]), ref_no=wo.wo_no,
+                       reason=f"골게터 투입 {r['roll_no']}")
 
 
 @handles("IF-EXT-04")
@@ -154,11 +156,10 @@ def mes_completed(db: Session, p: dict[str, Any]) -> dict[str, Any]:
     wo.good_qty = wo.routes[-1].good_qty
     wo.status = "DONE"
     wo.completed_at = now()
-    stock = db.scalar(select(ProductStock).where(ProductStock.item_code == wo.item_code))
-    if not stock:
-        stock = ProductStock(item_code=wo.item_code, qty=0)
-        db.add(stock)
-    stock.qty += wo.good_qty
+    if wo.good_qty > 0:
+        inventory.move(db, "PRODUCT", "IN", wo.item_code, wo.good_qty, to_wh="FG1", ref_no=wo.wo_no,
+                       reason="생산 입고")
+    ops_hooks.on_work_order_done(db, wo)
     db.flush()
     send: list = []
     order = db.get(SalesOrder, wo.order_id)

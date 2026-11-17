@@ -17,7 +17,8 @@ export const dt = (v: string | null | undefined) =>
 
 /** 기준정보·연동 코드값의 한글 표기. */
 export const CODE_LABEL: Record<string, string> = {
-  CUSTOMER: "고객사", SUPPLIER: "원지 공급사", CARRIER: "운송사",
+  CUSTOMER: "고객사", SUPPLIER: "원지·자재 공급사", CARRIER: "운송사", OUTSOURCE: "외주처",
+  PAPER: "원지", PRODUCT: "제품", SUB: "부자재",
   LINER: "라이너", MEDIUM: "골심지",
   CORRUGATE: "골판지기", PRINT: "인쇄", CONVERT: "가공",
 };
