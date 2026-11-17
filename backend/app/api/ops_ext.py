@@ -139,7 +139,8 @@ def processes(db: Session = Depends(get_db)):
     wos = list(db.scalars(select(WorkOrder).options(selectinload(WorkOrder.routes))))
     res = list(db.scalars(select(ProductionResult)))
     out = []
-    for e in db.scalars(select(Equipment).order_by(Equipment.id)):
+    order = ["CORRUGATE", "PRINT", "CONVERT"]
+    for e in sorted(db.scalars(select(Equipment)), key=lambda x: order.index(x.process) if x.process in order else 9):
         routes = [r for w in wos for r in w.routes if r.process == e.process]
         mine = [r for r in res if r.process == e.process]
         good, bad = sum(r.good_qty for r in mine), sum(r.defect_qty for r in mine)

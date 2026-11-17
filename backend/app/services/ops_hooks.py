@@ -33,7 +33,7 @@ def on_work_order_done(db: Session, wo: WorkOrder) -> None:
 
 def _pallet_sheets(db: Session) -> int:
     v = db.scalar(select(CostRate.value).where(CostRate.key == "pallet_sheets"))
-    return int(v or 400)
+    return int(v or 1000)
 
 
 def on_shipped(db: Session, sh: Shipment, order: SalesOrder) -> None:

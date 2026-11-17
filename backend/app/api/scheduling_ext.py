@@ -30,7 +30,7 @@ def settings_(db: Session = Depends(get_db)):
                        "capacity_per_hour": e.capacity_per_hour, "legacy_system": e.legacy_system}
                       for e in db.scalars(select(Equipment).order_by(Equipment.id))],
         "setup_minutes": rates.get("setup_minutes", 5),
-        "dispatch": {"pallet_sheets": rates.get("pallet_sheets", 400), "truck_11t": rates.get("truck_11t_pallets", 16),
+        "dispatch": {"pallet_sheets": rates.get("pallet_sheets", 1000), "truck_11t": rates.get("truck_11t_pallets", 16),
                      "truck_5t": rates.get("truck_5t_pallets", 10)},
         "regions": REGION,
         "auto_order": "가용재고(현재고 + 발주잔 − 미투입 소요) < 안전재고면 발주 단위(10톤)로 올려 발주",
@@ -91,8 +91,18 @@ def _dispatch_plan(db: Session) -> list[dict]:
             "ready": o.status == "PRODUCED"})
     trucks = []
     for (region, due), orders in sorted(groups.items(), key=lambda g: (g[0][1], g[0][0])):
+        parts = []  # 한 차에 다 안 실리는 큰 수주는 11톤 만차 단위로 나눈다
+        for od in orders:
+            left, n = od["pallets"], 0
+            while left > 0:
+                take = min(left, cap11)
+                n += 1
+                qty = round(od["qty"] * take / od["pallets"])
+                parts.append(od | {"pallets": take, "qty": qty,
+                                   "split": f"{n}/{math.ceil(od['pallets'] / cap11)}" if od["pallets"] > cap11 else None})
+                left -= take
         bins: list[dict] = []
-        for od in sorted(orders, key=lambda x: -x["pallets"]):  # first-fit decreasing
+        for od in sorted(parts, key=lambda x: -x["pallets"]):  # first-fit decreasing
             b = next((b for b in bins if b["pallets"] + od["pallets"] <= cap11), None)
             if not b:
                 b = {"orders": [], "pallets": 0}

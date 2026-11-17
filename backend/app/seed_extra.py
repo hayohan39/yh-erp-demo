@@ -40,7 +40,7 @@ COST_RATES = [
     ("PROCESS", "rate_CONVERT", "가공(접합·결속) 가공비", 1800, "원/분", "에볼/썬라이즈"),
     ("FREIGHT", "freight_base", "운반비 기본료", 80000, "원/건", "11톤 1대 기준 상차 1건"),
     ("FREIGHT", "freight_per_sheet", "운반비 매당 단가", 1.5, "원/매", "거리·중량 평균"),
-    ("FREIGHT", "pallet_sheets", "파렛트당 적재 매수", 400, "매", "A형 평균"),
+    ("FREIGHT", "pallet_sheets", "파렛트당 적재 매수", 1000, "매", "접힌 상태 평균"),
     ("FREIGHT", "truck_11t_pallets", "11톤 적재 파렛트", 16, "PLT", ""),
     ("FREIGHT", "truck_5t_pallets", "5톤 적재 파렛트", 10, "PLT", ""),
     ("COST", "setup_minutes", "공정별 셋업 시간", 5, "분", "작업 전환 1회"),
@@ -92,6 +92,7 @@ def _seed_monthly(db: Session, rng: random.Random) -> None:
               12: 1.12}
     months = [m for m in _months_back(30) if m >= "2025-01"]
     this_month = months[-1]
+    last_sales: dict[str, float] = {}
     for ym in months:
         y, mo = int(ym[:4]), int(ym[5:])
         growth = 1.0 if y == 2025 else 1.06
@@ -112,6 +113,8 @@ def _seed_monthly(db: Session, rng: random.Random) -> None:
         for c, w in zip(customers, cust_w):
             jitter = rng.uniform(0.85, 1.15)
             rows[("sales_amt", c)] = sales * w * jitter
+            if ym == months[-2]:
+                last_sales[c] = sales * w * jitter
             rows[("orders_amt", c)] = orders * w * jitter
         for code, w in (("S001", 0.45), ("S002", 0.35), ("S003", 0.2)):
             rows[("paper_amt", code)] = paper_amt * w
@@ -123,10 +126,8 @@ def _seed_monthly(db: Session, rng: random.Random) -> None:
         for (metric, dim), v in rows.items():
             db.add(MonthlyStat(ym=ym, metric=metric, dim=dim, value=round(v, 4 if metric == "defect_rate" else 0)))
     # 기초 미수금(거래처별): 지난달 매출의 약 1.6개월치
-    last = months[-2]
     for c in customers:
-        base = db.scalar(select(MonthlyStat.value).where(MonthlyStat.ym == last, MonthlyStat.metric == "sales_amt",
-                                                          MonthlyStat.dim == c)) or 0
+        base = last_sales.get(c, 0)
         db.add(MonthlyStat(ym="OPEN", metric="ar", dim=c, value=round(base * 1.1 * 1.6, -3)))
 
 
@@ -193,12 +194,12 @@ def seed_extra(db: Session) -> None:
         if it.print_colors:
             life = 300000
             db.add(Tooling(code=f"PL-{it.code}", kind="PLATE", item_code=it.code, location=f"조판실 랙 A-{rng.randint(1, 40):02d}",
-                           shots=int(life * rng.choice([0.1, 0.3, 0.5, 0.7, 0.86, 0.93])), life_shots=life,
+                           shots=int(life * rng.choice([0.1, 0.3, 0.5, 0.7, 0.86, 0.93]) * rng.uniform(0.94, 1.0)), life_shots=life,
                            made_at=today - timedelta(days=rng.randint(30, 700))))
         if it.box_style in ("다이컷", "트레이형"):
             life = 500000
             db.add(Tooling(code=f"DC-{it.code}", kind="DIE", item_code=it.code, location=f"목형 보관대 D-{rng.randint(1, 20):02d}",
-                           shots=int(life * rng.choice([0.2, 0.4, 0.6, 0.88])), life_shots=life,
+                           shots=int(life * rng.choice([0.2, 0.4, 0.6, 0.88]) * rng.uniform(0.94, 1.0)), life_shots=life,
                            made_at=today - timedelta(days=rng.randint(60, 900))))
 
     customers = [p for p in db.scalars(select(Partner).where(Partner.partner_type == "CUSTOMER").order_by(Partner.code))]

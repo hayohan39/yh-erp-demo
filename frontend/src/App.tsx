@@ -19,6 +19,16 @@ import IfFlowMap from "./pages/IfFlowMap";
 import { DispatchBoard, ShippingRequests } from "./pages/Shipping";
 import { Invoices, SalesClose } from "./pages/Settlement";
 import { OrderCosts, QuoteCalculator } from "./pages/Cost";
+import { StockAdjust, StockBalances, StockMoves, StockTransfer } from "./pages/ext/Inventory";
+import { AutoOrder, Expenses, PaperRequirements, PurchaseOrders, Purchases, SubMaterials } from "./pages/ext/Material";
+import { Allocation, Claims, Customers, Receivables, SalesLedger } from "./pages/ext/SalesExt";
+import {
+  Certs, DevCosts, Freight, Outsource, Pallets, Processes, ProductionResults, Specs, Tooling, WorkLogPage,
+} from "./pages/ext/OpsExt";
+import { CommonCodes, CostRates, Prices } from "./pages/ext/MasterExt";
+import { BoxGantt, DispatchPlan, SchedSettings } from "./pages/ext/SchedulingExt";
+import { CostAnalysis, StandardCost } from "./pages/ext/CostExt";
+import MisAnalysis from "./pages/ext/Mis";
 
 const { Sider, Header, Content } = Layout;
 
@@ -71,7 +81,48 @@ export default function App() {
             <Route path="/shipping/dispatch" element={<DispatchBoard />} />
             <Route path="/cost/orders" element={<OrderCosts />} />
             <Route path="/cost/quote" element={<QuoteCalculator />} />
+            <Route path="/master/codes" element={<CommonCodes />} />
+            <Route path="/master/material-cost" element={<Prices mode="material" />} />
+            <Route path="/master/process-cost" element={<CostRates groups={["PROCESS", "FREIGHT"]} />} />
+            <Route path="/master/prices" element={<Prices mode="sales" />} />
             <Route path="/master/:kind" element={<MasterTable />} />
+            <Route path="/sales/customers" element={<Customers />} />
+            <Route path="/sales/allocation" element={<Allocation />} />
+            <Route path="/sales/ledger" element={<SalesLedger />} />
+            <Route path="/sales/receivables" element={<Receivables />} />
+            <Route path="/sales/claims" element={<Claims />} />
+            <Route path="/scheduling/settings" element={<SchedSettings />} />
+            <Route path="/scheduling/gantt" element={<BoxGantt />} />
+            <Route path="/scheduling/dispatch" element={<DispatchPlan />} />
+            <Route path="/scheduling/auto-order" element={<AutoOrder />} />
+            <Route path="/production/results" element={<ProductionResults />} />
+            <Route path="/production/outsource" element={<Outsource />} />
+            <Route path="/production/adjust" element={<StockAdjust />} />
+            <Route path="/production/work-log" element={<WorkLogPage />} />
+            <Route path="/production/processes" element={<Processes />} />
+            <Route path="/quality/specs" element={<Specs />} />
+            <Route path="/quality/dev-costs" element={<DevCosts />} />
+            <Route path="/quality/certs" element={<Certs />} />
+            <Route path="/quality/tooling" element={<Tooling />} />
+            <Route path="/material/requirements" element={<PaperRequirements />} />
+            <Route path="/material/orders" element={<PurchaseOrders />} />
+            <Route path="/material/purchases" element={<Purchases />} />
+            <Route path="/material/paper-stock" element={<StockBalances kind="PAPER" />} />
+            <Route path="/material/transfer-site" element={<StockTransfer kind="PAPER" mode="site" />} />
+            <Route path="/material/transfer-wh" element={<StockTransfer kind="PAPER" mode="warehouse" />} />
+            <Route path="/material/sub" element={<SubMaterials />} />
+            <Route path="/material/expenses" element={<Expenses />} />
+            <Route path="/shipping/moves" element={<StockMoves kind="PRODUCT" />} />
+            <Route path="/shipping/stock" element={<StockBalances kind="PRODUCT" />} />
+            <Route path="/shipping/transfer-wh" element={<StockTransfer kind="PRODUCT" mode="warehouse" />} />
+            <Route path="/shipping/transfer-site" element={<StockTransfer kind="PRODUCT" mode="site" />} />
+            <Route path="/shipping/freight" element={<Freight />} />
+            <Route path="/shipping/pallets" element={<Pallets />} />
+            <Route path="/cost/settings" element={<CostRates groups={["COST", "PROCESS"]} />} />
+            <Route path="/cost/standard" element={<StandardCost />} />
+            <Route path="/cost/analysis" element={<CostAnalysis />} />
+            <Route path="/mis/trend" element={<Navigate to="/mis/sales" replace />} />
+            <Route path="/mis/:metric" element={<MisAnalysis />} />
             <Route path="/scheduling/corrugator" element={<CorrugatorPlan />} />
             <Route path="/production/work-orders" element={<WorkOrders />} />
             <Route path="/production/board" element={<ProductionBoard />} />

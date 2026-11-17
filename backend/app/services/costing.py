@@ -38,7 +38,7 @@ def rates(db: Session) -> dict[str, Any]:
         "setup": r.get("setup_minutes", SETUP_MINUTES), "loss": r.get("std_loss", STD_LOSS),
         "freight_base": r.get("freight_base", FREIGHT_BASE), "freight_sheet": r.get("freight_per_sheet", FREIGHT_PER_SHEET),
         "overhead": r.get("overhead_rate", 0.0), "margin": r.get("target_margin", 0.15),
-        "std_lot": int(r.get("std_lot", 5000)), "pallet_sheets": int(r.get("pallet_sheets", 400)),
+        "std_lot": int(r.get("std_lot", 5000)), "pallet_sheets": int(r.get("pallet_sheets", 1000)),
     }
 
 
