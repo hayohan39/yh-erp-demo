@@ -5,16 +5,17 @@
 export type Dir = "IN" | "OUT";
 
 export interface ModuleDef { key: string; label: string; scope: "rebuild" | "new"; phase?: string; funcs: string[] }
+/** 배열 순서 = 구성도 3x3 배치 순서. 왼쪽 열은 사내 레거시, 오른쪽 열은 설비·외부와 맞닿는 모듈. */
 export const MODULES: ModuleDef[] = [
-  { key: "master", label: "기준정보", scope: "rebuild", funcs: ["거래처", "공통항목", "원재료비", "가공비", "상자마스터", "운반비", "단가관리"] },
   { key: "sales", label: "영업관리", scope: "rebuild", funcs: ["거래처관리", "수주관리", "수주전용", "판매관리", "전자세금계산서", "크레임 관리", "마감관리", "수금관리"] },
-  { key: "ship", label: "출하관리", scope: "rebuild", funcs: ["출하요청", "입·출고", "재고관리", "배차상차", "제품 창고 이동", "제품 사업장 이동", "운반비 관리", "파렛 관리"] },
+  { key: "master", label: "기준정보", scope: "rebuild", funcs: ["거래처", "공통항목", "원재료비", "가공비", "상자마스터", "운반비", "단가관리"] },
   { key: "prod", label: "생산관리", scope: "rebuild", funcs: ["생산지시", "생산진도", "생산실적", "외주·매입관리", "재고조정", "작업내역", "공정관리"] },
   { key: "mat", label: "자재관리", scope: "rebuild", funcs: ["원지소요관리", "발주관리", "구매관리", "재고관리", "원지 사업장 이동", "원지 창고 이동", "부자재 관리", "경비관리"] },
   { key: "sched", label: "자동 스케쥴링", scope: "new", phase: "2차", funcs: ["기준정보", "원단 스케쥴링", "상자 스케쥴링", "배차 스케쥴링", "원지 자동발주"] },
+  { key: "ship", label: "출하관리", scope: "rebuild", funcs: ["출하요청", "입·출고", "재고관리", "배차상차", "제품 창고 이동", "제품 사업장 이동", "운반비 관리", "파렛 관리"] },
   { key: "qual", label: "품질관리", scope: "rebuild", funcs: ["시방 관리", "불량대책 관리", "개발비 관리", "성적서 관리", "조판 목형"] },
-  { key: "mis", label: "경영정보", scope: "rebuild", phase: "월·년", funcs: ["수주분석", "매출분석", "생산분석", "원지매입", "운반비분석"] },
   { key: "cost", label: "원가분석", scope: "new", phase: "3차", funcs: ["기준정보", "실제원가", "표준원가", "견적원가", "원가분석"] },
+  { key: "mis", label: "경영정보", scope: "rebuild", phase: "월·년", funcs: ["수주분석", "매출분석", "생산분석", "원지매입", "운반비분석"] },
 ];
 
 export interface SystemDef {

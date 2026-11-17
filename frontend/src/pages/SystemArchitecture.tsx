@@ -1,6 +1,6 @@
 import { ApiOutlined, CloseOutlined, CodeOutlined } from "@ant-design/icons";
 import { Button, Card, Col, Empty, Row, Space, Table, Tag, Typography } from "antd";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
 import { Pt, TokenShape, textW, useTokens } from "../components/anim";
@@ -11,9 +11,15 @@ interface IfEvent { id: number; if_id: string; direction: string; source: string
 type Sel = { kind: "sys" | "mod"; key: string } | null;
 
 // ---- 배치(viewBox 1400 x 860)
-const ERP = { x: 470, y: 64, w: 430, h: 636 };
-const TILE = { x: ERP.x + 16, y: ERP.y + 84, w: 126, h: 148, gap: 10 };
-const GW = { x: ERP.x + 16, y: ERP.y + 84 + 3 * 148 + 2 * 10 + 14, w: ERP.w - 32, h: 66 };
+const ERP = { x: 470, y: 100, w: 430, h: 560 };
+const TILE = { x: ERP.x + 16, y: ERP.y + 76, w: 122, h: 120, gx: 15, gy: 18 };
+const GW = { x: ERP.x + 16, y: ERP.y + 76 + 3 * 120 + 2 * 18 + 10, w: ERP.w - 32, h: 58 };
+/** 모듈 타일 위치(MODULES 배열 순서대로 3x3). */
+function tileRect(key: string) {
+  const i = MODULES.findIndex((m) => m.key === key);
+  const col = i % 3, row = Math.floor(i / 3);
+  return { x: TILE.x + col * (TILE.w + TILE.gx), y: TILE.y + row * (TILE.h + TILE.gy), w: TILE.w, h: TILE.h, col, row };
+}
 const BOX: Record<string, { x: number; y: number; w: number; h: number }> = {
   OMS: { x: 30, y: 92, w: 250, h: 150 },
   MES: { x: 30, y: 294, w: 250, h: 170 },
@@ -21,9 +27,9 @@ const BOX: Record<string, { x: number; y: number; w: number; h: number }> = {
   "골게터 POP": { x: 1100, y: 92, w: 270, h: 62 },
   "에볼/썬라이즈": { x: 1100, y: 166, w: 270, h: 62 },
   "인쇄 5호기": { x: 1100, y: 240, w: 270, h: 62 },
-  위아고: { x: 1100, y: 372, w: 270, h: 62 },
-  로지스팟: { x: 1100, y: 446, w: 270, h: 62 },
-  오토콘: { x: 1100, y: 520, w: 270, h: 62 },
+  위아고: { x: 1100, y: 446, w: 270, h: 62 },
+  로지스팟: { x: 1100, y: 520, w: 270, h: 62 },
+  오토콘: { x: 1100, y: 372, w: 270, h: 62 },
   더존: { x: 1100, y: 594, w: 270, h: 62 },
 };
 const GROUP = {
@@ -46,17 +52,65 @@ function cubicAt(c: Cubic, t: number): Pt {
 }
 const sample = (c: Cubic, n = 24): Pt[] => Array.from({ length: n + 1 }, (_, i) => cubicAt(c, i / n));
 
-/** 시스템별 IN(→ERP)·OUT(ERP→) 연결선. */
-function links(s: SystemDef) {
-  const b = BOX[s.key];
-  const left = b.x < ERP.x;
-  const sy = b.y + b.h / 2;
-  const ey = 382 + (sy - 382) * 0.72;
-  const nx = left ? b.x + b.w : b.x, ex = left ? ERP.x : ERP.x + ERP.w;
-  const inC = cubic([nx, sy - 6], [ex, ey - 6]);
-  const outC = cubic([ex, ey + 6], [nx, sy + 6]);
-  return { inC, outC, left };
+/**
+ * 시스템별 IN(→ERP)·OUT(ERP→) 연결선. ERP 테두리에서 끝나지 않고 실제로 데이터를 받는 모듈 타일까지 잇는다.
+ * - 같은 쪽 바깥 열의 모듈: 타일 옆면 포트로 바로 들어간다(여러 시스템이면 포트를 나눠 쓴다).
+ * - 반대쪽 열의 모듈: 타일 사이 통로(행 사이 간격)를 따라 가로질러 타일 아래면으로 들어간다.
+ */
+interface Link { inC: Cubic; outC: Cubic; inD: string; outD: string; inPts: Pt[]; outPts: Pt[]; left: boolean; ends: Pt[] }
+const polyTail = (pts: Pt[]) => pts.map((p) => ` L${p[0]},${p[1]}`).join("");
+function buildLinks(): Record<string, Link> {
+  const out: Record<string, Link> = {};
+  const groups = new Map<string, SystemDef[]>(); // 같은 타일 옆면을 쓰는 시스템 묶음
+  const gutter = new Map<string, SystemDef[]>(); // 같은 통로를 쓰는 시스템 묶음
+  SYSTEMS.forEach((s) => {
+    const b = BOX[s.key], left = b.x < ERP.x, t = tileRect(s.modules[0]);
+    const direct = left ? t.col === 0 : t.col === 2;
+    const map = direct ? groups : gutter, k = direct ? `${s.modules[0]}:${left}` : `row${t.row}`;
+    map.set(k, [...(map.get(k) ?? []), s]);
+  });
+  const sy = (s: SystemDef) => BOX[s.key].y + BOX[s.key].h / 2;
+  SYSTEMS.forEach((s) => {
+    const b = BOX[s.key], left = b.x < ERP.x, t = tileRect(s.modules[0]);
+    const nx = left ? b.x + b.w : b.x, ex = left ? ERP.x : ERP.x + ERP.w;
+    const y0 = sy(s);
+    let inTail: Pt[], outTail: Pt[], eyIn: number, eyOut: number;
+    const direct = left ? t.col === 0 : t.col === 2;
+    if (direct) {
+      const peers = groups.get(`${s.modules[0]}:${left}`)!.sort((a, c) => sy(a) - sy(c));
+      const i = peers.indexOf(s), n = peers.length;
+      const py = n === 1 ? t.y + t.h / 2 : t.y + 18 + (i * (t.h - 36)) / (n - 1);
+      const tx = left ? t.x : t.x + t.w;
+      eyIn = py - 4; eyOut = py + 4;
+      inTail = [[tx, eyIn]];
+      outTail = [[tx, eyOut]];
+    } else {
+      // 타일 아래 통로(행 사이)로 가로지른다
+      const peers = gutter.get(`row${t.row}`)!;
+      const i = peers.indexOf(s);
+      const gy = t.y + t.h + TILE.gy / 2 + (i - (peers.length - 1) / 2) * 7;
+      const cx = t.x + t.w / 2 + (i - (peers.length - 1) / 2) * 22;
+      eyIn = gy - 2; eyOut = gy + 2;
+      inTail = [[cx - 4, eyIn], [cx - 4, t.y + t.h]];
+      outTail = [[cx + 4, eyOut], [cx + 4, t.y + t.h]];
+    }
+    const inC = cubic([nx, y0 - 6], [ex, eyIn]);
+    const outBack = cubic([nx, y0 + 6], [ex, eyOut]); // 바깥 → ERP 방향으로 만든 뒤 뒤집는다
+    const outPts = [...[...outTail].reverse(), ...sample(outBack).reverse()];
+    const outC: Cubic = [outBack[3], outBack[2], outBack[1], outBack[0]];
+    out[s.key] = {
+      inC, outC, left,
+      inD: cubicD(inC) + polyTail(inTail),
+      outD: `M${outPts[0][0]},${outPts[0][1]}` + polyTail(outTail.slice(0, -1).reverse()) + ` L${outC[0][0]},${outC[0][1]}` +
+        ` C${outC[1][0]},${outC[1][1]} ${outC[2][0]},${outC[2][1]} ${outC[3][0]},${outC[3][1]}`,
+      inPts: [...sample(inC), ...inTail],
+      outPts,
+      ends: [inTail[inTail.length - 1], outTail[outTail.length - 1]],
+    };
+  });
+  return out;
 }
+const LINKS = buildLinks();
 
 function Pill({ at, text, color, dim }: { at: Pt; text: string; color: string; dim: boolean }) {
   const w = textW(text, 11) + 16;
@@ -95,7 +149,7 @@ export default function SystemArchitecture() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 600); return () => clearInterval(t); }, []);
 
-  const L = useMemo(() => Object.fromEntries(SYSTEMS.map((s) => [s.key, links(s)])), []);
+  const L = LINKS;
 
   useEvents(["if_message", "reset"], (name, raw) => {
     if (name === "reset") { setHot({}); reload(); return; }
@@ -105,7 +159,7 @@ export default function SystemArchitecture() {
     const l = L[sysKey];
     if (l) {
       const failed = e.status === "FAILED";
-      add({ pts: sample(e.direction === "IN" ? l.inC : l.outC), dur: 1600, color: failed ? "#ef4444" : e.direction === "IN" ? IN_C : OUT_C,
+      add({ pts: e.direction === "IN" ? l.inPts : l.outPts, dur: 1600, color: failed ? "#ef4444" : e.direction === "IN" ? IN_C : OUT_C,
         shape: e.direction === "IN" ? "dot" : "mail", label: e.if_id.replace("IF-", "") });
       setHot((h) => ({ ...h, [sysKey]: Date.now() }));
     }
@@ -175,25 +229,6 @@ export default function SystemArchitecture() {
               <text x={1100} y={84} fill={GROUP.equip.color} fontSize={13} fontWeight={700}>생산 설비</text>
               <text x={1100} y={364} fill={GROUP.ext.color} fontSize={13} fontWeight={700}>외부 시스템</text>
 
-              {/* 연결선 */}
-              {SYSTEMS.map((s) => {
-                const l = L[s.key];
-                const on = sysOn(s);
-                const hotNow = isHot(s.key);
-                const dim = !on;
-                return (
-                  <g key={`l-${s.key}`} opacity={dim ? 0.18 : 1} style={{ transition: "opacity .3s" }}>
-                    {s.link.in && <>
-                      <path d={cubicD(l.inC)} stroke={IN_C} strokeOpacity={0.25} strokeWidth={hotNow ? 6 : 4} fill="none" />
-                      <path d={cubicD(l.inC)} stroke={IN_C} strokeWidth={2} fill="none" className="sa-flow" filter={active && on ? "url(#sa-glow)" : undefined} />
-                    </>}
-                    {s.link.out && <>
-                      <path d={cubicD(l.outC)} stroke={OUT_C} strokeOpacity={0.25} strokeWidth={hotNow ? 6 : 4} fill="none" />
-                      <path d={cubicD(l.outC)} stroke={OUT_C} strokeWidth={2} fill="none" className="sa-flow" filter={active && on ? "url(#sa-glow)" : undefined} />
-                    </>}
-                  </g>
-                );
-              })}
               {/* 급여 → SECOM (1차 범위 외) */}
               <g opacity={0.6}>
                 <path d="M280,790 L1100,790" stroke="#64748b" strokeDasharray="6 8" strokeWidth={2} fill="none" />
@@ -206,11 +241,11 @@ export default function SystemArchitecture() {
                 <rect x={ERP.x} y={ERP.y} width={ERP.w} height={ERP.h} rx={20} fill="url(#sa-erp)" stroke="#60a5fa" strokeOpacity={0.7} strokeWidth={1.5} />
                 <text x={ERP.x + ERP.w / 2} y={ERP.y + 38} textAnchor="middle" fill="#fff" fontSize={22} fontWeight={800}>YH 통합 ERP</text>
                 <text x={ERP.x + ERP.w / 2} y={ERP.y + 60} textAnchor="middle" fill="#93c5fd" fontSize={12}>React · FastAPI · PostgreSQL · 실시간 이벤트(SSE)</text>
-                {MODULES.map((m, i) => {
-                  const x = TILE.x + (i % 3) * (TILE.w + TILE.gap), y = TILE.y + Math.floor(i / 3) * (TILE.h + TILE.gap);
+                {MODULES.map((m) => {
+                  const { x, y } = tileRect(m.key);
                   const on = modOn(m.key);
                   const isSel = sel?.kind === "mod" && sel.key === m.key;
-                  const lines = wrap(m.funcs, TILE.w - 20).slice(0, 5);
+                  const lines = wrap(m.funcs, TILE.w - 18, 10).slice(0, 5);
                   return (
                     <g key={m.key} className="sa-hit" opacity={on ? 1 : 0.28} style={{ transition: "opacity .3s" }}
                       onClick={(e) => { e.stopPropagation(); choose({ kind: "mod", key: m.key }); }}
@@ -218,8 +253,8 @@ export default function SystemArchitecture() {
                       <rect x={x} y={y} width={TILE.w} height={TILE.h} rx={12} fill={m.scope === "new" ? "url(#sa-new)" : "url(#sa-tile)"}
                         stroke={isSel ? "#fff" : m.scope === "new" ? NEW_C : "#60a5fa"} strokeOpacity={isSel ? 1 : 0.6} strokeWidth={isSel ? 2 : 1} />
                       <text x={x + 10} y={y + 24} fill="#fff" fontSize={14} fontWeight={700}>{m.label}</text>
-                      {m.phase && <text x={x + TILE.w - 10} y={y + 23} textAnchor="end" fill={m.scope === "new" ? "#fde68a" : "#bfdbfe"} fontSize={10}>{m.scope === "new" ? `신규 · ${m.phase}` : m.phase}</text>}
-                      {lines.map((ln, k) => <text key={k} x={x + 10} y={y + 46 + k * 18} fill="#cbd5e1" fontSize={11}>{ln}</text>)}
+                      {m.phase && <text x={x + TILE.w - 9} y={y + TILE.h - 9} textAnchor="end" fill={m.scope === "new" ? "#fde68a" : "#bfdbfe"} fontSize={10}>{m.scope === "new" ? `신규 · ${m.phase}` : m.phase}</text>}
+                      {lines.map((ln, k) => <text key={k} x={x + 10} y={y + 42 + k * 15} fill="#cbd5e1" fontSize={10}>{ln}</text>)}
                     </g>
                   );
                 })}
@@ -227,10 +262,31 @@ export default function SystemArchitecture() {
                   <rect x={GW.x} y={GW.y} width={GW.w} height={GW.h} rx={12} fill="#0b1530" stroke="#38bdf8" strokeOpacity={0.6} />
                   <text x={GW.x + 14} y={GW.y + 25} fill="#e0f2fe" fontSize={14} fontWeight={700}>I/F 게이트웨이</text>
                   <text x={GW.x + 120} y={GW.y + 25} fill="#7dd3fc" fontSize={11}>18종 · 이력 저장 · 실패 재처리 · 중복 차단</text>
-                  <text x={GW.x + 14} y={GW.y + 48} fill="#94a3b8" fontSize={11}>공통 봉투 {`{ ${ENVELOPE.join(", ")} }`}</text>
+                  <text x={GW.x + 14} y={GW.y + 45} fill="#94a3b8" fontSize={11}>공통 봉투 {`{ ${ENVELOPE.join(", ")} }`}</text>
                 </g>
               </g>
 
+              {/* 연결선 */}
+              {SYSTEMS.map((s) => {
+                const l = L[s.key];
+                const on = sysOn(s);
+                const hotNow = isHot(s.key);
+                const dim = !on;
+                return (
+                  <g key={`l-${s.key}`} opacity={dim ? 0.18 : 1} style={{ transition: "opacity .3s" }}>
+                    {s.link.in && <>
+                      <path d={l.inD} stroke={IN_C} strokeOpacity={0.25} strokeWidth={hotNow ? 6 : 4} fill="none" strokeLinejoin="round" />
+                      <path d={l.inD} stroke={IN_C} strokeWidth={2} fill="none" className="sa-flow" strokeLinejoin="round" filter={active && on ? "url(#sa-glow)" : undefined} />
+                      <circle cx={l.ends[0][0]} cy={l.ends[0][1]} r={3} fill={IN_C} />
+                    </>}
+                    {s.link.out && <>
+                      <path d={l.outD} stroke={OUT_C} strokeOpacity={0.25} strokeWidth={hotNow ? 6 : 4} fill="none" strokeLinejoin="round" />
+                      <path d={l.outD} stroke={OUT_C} strokeWidth={2} fill="none" className="sa-flow" strokeLinejoin="round" filter={active && on ? "url(#sa-glow)" : undefined} />
+                      <circle cx={l.ends[1][0]} cy={l.ends[1][1]} r={3} fill={OUT_C} />
+                    </>}
+                  </g>
+                );
+              })}
               {/* 시스템 노드 */}
               {SYSTEMS.map((s) => {
                 const b = BOX[s.key];
