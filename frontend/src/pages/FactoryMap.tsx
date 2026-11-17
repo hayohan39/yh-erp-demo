@@ -1,22 +1,22 @@
 import { Card, Col, List, Row, Statistic, Tag, Typography } from "antd";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
 import DemoActions from "../components/DemoActions";
 import { Pt, TokenShape, polyD, textW, useTokens } from "../components/anim";
 
-interface Current { wo_no: string; item_name: string; qty: number; started_at: string; expected_minutes: number; print_colors: number }
-interface Machine {
+export interface Current { wo_no: string; item_name: string; qty: number; started_at: string; expected_minutes: number; print_colors: number }
+export interface Machine {
   code: string; name: string; process: string; legacy_system: string; status: "RUN" | "IDLE"; current: Current | null;
   queue: number; done: number; good_qty: number; defect_qty: number; defect_rate: number; open_defects: number;
 }
-interface Paper { code: string; name: string; kind: string; used_kg: number; rolls_used: number; stock_kg: number; opening_kg: number }
-interface Factory {
+export interface Paper { code: string; name: string; kind: string; used_kg: number; rolls_used: number; stock_kg: number; opening_kg: number }
+export interface Factory {
   server_time: string; machines: Machine[]; conveyor: { in_transit: number }; papers: Paper[]; paper_used_kg: number;
   products: { total_qty: number; items: { item_code: string; item_name: string; qty: number }[] };
   work_orders: { total: number; done: number; in_prod: number; issued: number };
 }
-interface IfEvent { if_id: string; direction: string; source: string; target: string; status: string; name: string; key: string; detail: string }
+export interface IfEvent { if_id: string; direction: string; source: string; target: string; status: string; name: string; key: string; detail: string }
 interface LogRow { id: number; time: string; text: string; color: string }
 
 // ---- 배치(viewBox 1200 x 640 기준 좌표)
@@ -116,7 +116,8 @@ function Header({ x, y, title, sys, m }: { x: number; y: number; title: string; 
   );
 }
 
-export default function FactoryMap() {
+/** 설비 모니터링의 평면도 보기(3D를 쓸 수 없을 때의 대체 화면이기도 하다). */
+export default function FactoryMap({ extra }: { extra?: ReactNode }) {
   const [f, setF] = useState<Factory>();
   const [speed, setSpeed] = useState(1);
   const [offset, setOffset] = useState(0);
@@ -227,7 +228,7 @@ export default function FactoryMap() {
       <style>{css}</style>
       <Card size="small" style={{ marginBottom: 12 }} styles={{ body: { display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "space-between" } }}>
         <DemoActions onSpeed={setSpeed} />
-        <Typography.Text type="secondary">설비·PMS·오토콘 신호를 실시간으로 받아 그립니다</Typography.Text>
+        {extra ?? <Typography.Text type="secondary">설비·PMS·오토콘 신호를 실시간으로 받아 그립니다</Typography.Text>}
       </Card>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {[
