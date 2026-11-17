@@ -16,6 +16,9 @@ import Defects from "./pages/Defects";
 import DefectAlerts from "./components/DefectAlerts";
 import FactoryMap from "./pages/FactoryMap";
 import IfFlowMap from "./pages/IfFlowMap";
+import { DispatchBoard, ShippingRequests } from "./pages/Shipping";
+import { Invoices, SalesClose } from "./pages/Settlement";
+import { OrderCosts, QuoteCalculator } from "./pages/Cost";
 
 const { Sider, Header, Content } = Layout;
 
@@ -62,6 +65,12 @@ export default function App() {
             <Route path="/monitor/factory" element={<FactoryMap />} />
             <Route path="/monitor/interfaces" element={<IfFlowMap />} />
             <Route path="/sales/orders" element={<SalesOrders />} />
+            <Route path="/sales/close" element={<SalesClose />} />
+            <Route path="/sales/invoice" element={<Invoices />} />
+            <Route path="/shipping/requests" element={<ShippingRequests />} />
+            <Route path="/shipping/dispatch" element={<DispatchBoard />} />
+            <Route path="/cost/orders" element={<OrderCosts />} />
+            <Route path="/cost/quote" element={<QuoteCalculator />} />
             <Route path="/master/:kind" element={<MasterTable />} />
             <Route path="/scheduling/corrugator" element={<CorrugatorPlan />} />
             <Route path="/production/work-orders" element={<WorkOrders />} />

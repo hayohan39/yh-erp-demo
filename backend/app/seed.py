@@ -58,6 +58,17 @@ CODE_GROUPS = {
 }
 
 
+def _std_unit_cost(board: str, length: int, width: int, height: int, colors: int) -> float:
+    """매당 표준원가(원): 원지(손실 3%) + 가공비(골판지기·인쇄·가공, 5천 매 기준) + 운반비. 원가분석 로직과 같은 가정."""
+    flute, o, m, i = next(b for b in BOARD_SPECS if _board_code(*b) == board)
+    paper = {code: (bw, price) for code, _n, _k, bw, price in PAPER_GRADES}
+    take_up = {"A": 1.55, "B": 1.35, "C": 1.45, "E": 1.25, "BA": 2.9}.get(flute, 1.4)
+    won_m2 = sum(paper[c][0] / 1000 * paper[c][1] * f for c, f in ((o, 1), (m, take_up), (i, 1)))
+    area = (width + height + 10) * (2 * (length + width) + 40) / 1e6
+    process = 4000 / 150 + 1800 / 100 + (2500 / 83 if colors else 0) + 3  # 셋업 분담 포함
+    return round(area * 1.03 * won_m2 + process + 18, -1)
+
+
 def _board_code(flute: str, o: str, m: str, i: str) -> str:
     return f"{flute}-{o}/{m}/{i}"
 
@@ -98,13 +109,13 @@ def seed(db: Session) -> None:
             width = rng.choice([200, 250, 300, 350, 400])
             height = rng.choice([100, 150, 200, 250, 300])
             colors = rng.choice([0, 1, 2, 3, 4])
-            std_cost = round(250 + (length + width) * height / 900 + colors * 35, -1)
+            name = f"{cname} {rng.choice(BOX_NAMES)} {length}x{width}x{height}"
+            style, board = rng.choice(BOX_STYLES), rng.choice(board_codes)
+            std_cost = _std_unit_cost(board, length, width, height, colors)
             db.add(ItemBox(
-                code=f"BX{n:04d}", name=f"{cname} {rng.choice(BOX_NAMES)} {length}x{width}x{height}",
-                customer_code=ccode, box_style=rng.choice(BOX_STYLES),
-                length_mm=length, width_mm=width, height_mm=height,
-                board_spec_code=rng.choice(board_codes), print_colors=colors,
-                unit_price=round(std_cost * rng.uniform(1.15, 1.3), -1), std_cost=std_cost,
+                code=f"BX{n:04d}", name=name, customer_code=ccode, box_style=style,
+                length_mm=length, width_mm=width, height_mm=height, board_spec_code=board, print_colors=colors,
+                unit_price=round(std_cost * rng.uniform(1.26, 1.42), -1), std_cost=std_cost,
             ))
             n += 1
 

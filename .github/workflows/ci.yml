@@ -62,5 +62,21 @@ jobs:
             [ "$S" = "PRODUCED" ] && exit 0; sleep 3
           done
           echo "생산완료 안 됨: $S"; docker compose logs --tail 50 simulator backend; exit 1
+      - name: 출하요청 → 로지스팟 배차 → 매출 마감 → 위아고 승인 → 수주 마감 확인
+        run: |
+          ORDER=$(curl -fsS localhost:8080/api/sales/orders | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["order_no"])')
+          curl -fsS -X POST localhost:8080/api/shipping/requests -H 'content-type: application/json' -d "{\"order_no\":\"$ORDER\"}"
+          wait_status() {
+            for i in $(seq 1 40); do
+              S=$(curl -fsS localhost:8080/api/sales/orders | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["status"])')
+              [ "$S" = "$1" ] && return 0; sleep 2
+            done
+            echo "$1 안 됨: $S"; docker compose logs --tail 50 simulator backend; return 1
+          }
+          wait_status SHIPPED
+          curl -fsS -X POST localhost:8080/api/settlement/close -H 'content-type: application/json' -d '{}'
+          wait_status CLOSED
+          curl -fsS -X POST localhost:8080/api/settlement/vouchers/export | head -3
+          curl -fsS localhost:8080/api/cost/orders | python3 -c 'import json,sys;c=json.load(sys.stdin)[0];print(c["order_no"],c["cost_rate"]);assert c["cost_rate"]'
       - if: always()
         run: docker compose down -v

@@ -62,7 +62,7 @@ def _to_dict(m: IfMessage) -> dict[str, Any]:
     }
 
 
-_KEY_FIELDS = ("wo_no", "erp_order_no", "order_no", "oms_order_no", "plan_no", "invoice_no", "shipment_no")
+_KEY_FIELDS = ("shipment_no", "invoice_no", "wo_no", "erp_order_no", "order_no", "oms_order_no", "plan_no", "file_name")
 
 
 def _event_dict(m: IfMessage) -> dict[str, Any]:
@@ -113,7 +113,8 @@ def _run_handler(db: Session, msg: IfMessage) -> dict[str, Any] | None:
 
 def receive(db: Session, env: Envelope) -> tuple[IfMessage, bool, dict[str, Any] | None]:
     """수신 처리. (메시지, 중복 여부, 핸들러 결과)를 돌려준다."""
-    if env.if_id not in IF_BY_ID or IF_BY_ID[env.if_id].direction != "IN":
+    d = IF_BY_ID.get(env.if_id)
+    if not d or (d.direction != "IN" and not d.callback):
         raise ValueError(f"수신 I/F가 아닙니다: {env.if_id}")
     existing = db.scalar(select(IfMessage).where(IfMessage.message_id == env.message_id))
     if existing:

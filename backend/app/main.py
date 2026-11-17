@@ -6,10 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import models  # noqa: F401 - 테이블 등록
-from app.api import dashboard, interface, master, monitor, production, quality, sales, scheduling, system
+from app.api import (
+    cost, dashboard, interface, master, monitor, production, quality, sales, scheduling, settlement, shipping, system,
+)
 from app.config import settings
 from app.db import Base, SessionLocal, engine, wait_for_db
 from app.interfaces import handlers  # noqa: F401 - I/F 핸들러 등록
+from app.services import settlement as _settlement, shipping as _shipping  # noqa: F401 - 콜백 핸들러 등록
 from app.seed import seed
 from app.services import events
 
@@ -35,5 +38,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (system.router, interface.router, master.router, sales.router, scheduling.router, production.router,
-          quality.router, dashboard.router, monitor.router):
+          quality.router, dashboard.router, monitor.router, shipping.router, settlement.router, cost.router):
     app.include_router(r)

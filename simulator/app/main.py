@@ -201,6 +201,11 @@ async def inbound(env: dict[str, Any]):
             t = asyncio.create_task(factory.run_work_order(wo))
             state.prod_tasks.add(t)
             t.add_done_callback(state.prod_tasks.discard)
+    ext = {"IF-EXT-02": external.logispot_dispatch, "IF-EXT-01": external.weago_issue}.get(env.get("if_id"))
+    if ext:
+        t = asyncio.create_task(ext(env["payload"]))
+        state.prod_tasks.add(t)
+        t.add_done_callback(state.prod_tasks.discard)
     return {"ack": True}
 
 
@@ -220,4 +225,4 @@ def received():
     return list(state.received)
 
 
-from app import factory  # noqa: E402  - factory가 이 모듈의 state·send_envelope를 쓰므로 마지막에 import
+from app import external, factory  # noqa: E402  - 이 모듈의 state·send_envelope를 쓰므로 마지막에 import
