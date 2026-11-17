@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.interfaces import gateway
 from app.interfaces.gateway import handles
-from app.models import ItemBox, Partner, ProductStock, SalesOrder, Shipment, ShipmentLine, WorkOrder
+from app.models import ItemBox, OrderAllocation, Partner, ProductStock, SalesOrder, Shipment, ShipmentLine, WorkOrder
 from app.models._types import now
-from app.services import events
+from app.services import events, inventory, ops_hooks
 from app.services.planning import _next_no
 
 
@@ -19,6 +19,8 @@ def shippable_qty(db: Session, order: SalesOrder) -> dict[str, int]:
     out: dict[str, int] = {}
     for w in db.scalars(select(WorkOrder).where(WorkOrder.order_id == order.id, WorkOrder.status == "DONE")):
         out[w.item_code] = out.get(w.item_code, 0) + w.good_qty
+    for a in db.scalars(select(OrderAllocation).where(OrderAllocation.order_id == order.id)):  # 수주전용
+        out[a.item_code] = out.get(a.item_code, 0) + a.qty
     return out
 
 
@@ -73,10 +75,11 @@ def logispot_callback(db: Session, p: dict[str, Any]) -> dict[str, Any]:
             stock = db.scalar(select(ProductStock).where(ProductStock.item_code == ln.item_code))
             if not stock or stock.qty < ln.qty:
                 raise ValueError(f"제품 재고 부족: {ln.item_code}")
-            stock.qty -= ln.qty
+            inventory.move(db, "PRODUCT", "OUT", ln.item_code, ln.qty, ref_no=sh.shipment_no, reason="출하")
         sh.status = "SHIPPED"
         sh.shipped_at = now()
         order.status = "SHIPPED"
+        ops_hooks.on_shipped(db, sh, order)
         send.append(("IF-OMS-02", {"oms_order_no": order.oms_order_no, "erp_order_no": order.order_no,
                                    "status": "출하완료", "vehicle_no": sh.vehicle_no}))
     else:

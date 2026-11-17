@@ -12,8 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
-    BoardSpec, Equipment, ItemBox, PaperGrade, PaperUsage, Partner, ProductionResult, SalesOrder, Shipment,
-    TaxInvoice, WorkOrder,
+    BoardSpec, CostRate, Equipment, ItemBox, OrderAllocation, PaperGrade, PaperUsage, Partner, ProductionResult,
+    SalesOrder, Shipment, TaxInvoice, WorkOrder,
 )
 from app.services.planning import paper_cost_per_m2
 from app.services.scheduling import blank_size
@@ -30,13 +30,28 @@ def _equipment(db: Session) -> dict[str, Equipment]:
     return {e.process: e for e in db.scalars(select(Equipment))}
 
 
-def _std_process(eqs: dict[str, Equipment], qty: int, print_colors: int) -> dict[str, float]:
+def rates(db: Session) -> dict[str, Any]:
+    """원가 기준정보(cost_rate). 값이 없으면 코드 기본값을 쓴다."""
+    r = {c.key: c.value for c in db.scalars(select(CostRate))}
+    return {
+        "process": {p: r.get(f"rate_{p}", v) for p, v in PROCESS_RATE.items()},
+        "setup": r.get("setup_minutes", SETUP_MINUTES), "loss": r.get("std_loss", STD_LOSS),
+        "freight_base": r.get("freight_base", FREIGHT_BASE), "freight_sheet": r.get("freight_per_sheet", FREIGHT_PER_SHEET),
+        "overhead": r.get("overhead_rate", 0.0), "margin": r.get("target_margin", 0.15),
+        "std_lot": int(r.get("std_lot", 5000)), "pallet_sheets": int(r.get("pallet_sheets", 1000)),
+    }
+
+
+def _std_process(eqs: dict[str, Equipment], qty: int, print_colors: int, rt: dict[str, Any] | None = None
+                 ) -> dict[str, float]:
+    rate = rt["process"] if rt else PROCESS_RATE
+    setup = rt["setup"] if rt else SETUP_MINUTES
     out = {}
     for proc in ("CORRUGATE", "PRINT", "CONVERT"):
         if proc == "PRINT" and not print_colors:
             continue
-        minutes = qty / eqs[proc].capacity_per_hour * 60 + SETUP_MINUTES
-        out[proc] = minutes * PROCESS_RATE[proc]
+        minutes = qty / eqs[proc].capacity_per_hour * 60 + setup
+        out[proc] = minutes * rate[proc]
     return out
 
 
@@ -44,7 +59,9 @@ def order_cost(db: Session, order: SalesOrder) -> dict[str, Any]:
     items = {i.code: i for i in db.scalars(select(ItemBox))}
     prices = {g.code: g.price_per_kg for g in db.scalars(select(PaperGrade))}
     eqs = _equipment(db)
+    rt = rates(db)
     wos = list(db.scalars(select(WorkOrder).where(WorkOrder.order_id == order.id)))
+    allocs = list(db.scalars(select(OrderAllocation).where(OrderAllocation.order_id == order.id)))
     wo_nos = [w.wo_no for w in wos]
     qty_by_item = {ln.item_code: ln.qty for ln in order.lines}
 
@@ -54,11 +71,11 @@ def order_cost(db: Session, order: SalesOrder) -> dict[str, Any]:
         it = items[code]
         bw, bl = blank_size(it.length_mm, it.width_mm, it.height_mm)
         _, won_m2 = paper_cost_per_m2(db, it.board_spec_code)
-        std_mat += bw * bl / 1e6 * qty * (1 + STD_LOSS) * won_m2
-        for p, v in _std_process(eqs, qty, it.print_colors).items():
+        std_mat += bw * bl / 1e6 * qty * (1 + rt["loss"]) * won_m2
+        for p, v in _std_process(eqs, qty, it.print_colors, rt).items():
             std_proc[p] = std_proc.get(p, 0) + v
     total_qty = sum(qty_by_item.values())
-    std_freight = FREIGHT_BASE + FREIGHT_PER_SHEET * total_qty
+    std_freight = rt["freight_base"] + rt["freight_sheet"] * total_qty
 
     usage = list(db.scalars(select(PaperUsage).where(PaperUsage.wo_no.in_(wo_nos)))) if wo_nos else []
     act_mat = sum(u.used_kg * prices.get(u.paper_code, 0) for u in usage)
@@ -66,15 +83,18 @@ def order_cost(db: Session, order: SalesOrder) -> dict[str, Any]:
     act_proc: dict[str, float] = {}
     defect_qty = 0
     for r in results:
-        act_proc[r.process] = act_proc.get(r.process, 0) + r.run_minutes * PROCESS_RATE.get(r.process, 0)
+        act_proc[r.process] = act_proc.get(r.process, 0) + r.run_minutes * rt["process"].get(r.process, 0)
         defect_qty += r.defect_qty
+    if allocs and not wos:  # 수주전용(재고 출하): 재고의 원가는 표준원가로 본다
+        act_mat, act_proc = std_mat, dict(std_proc)
     sh = db.scalar(select(Shipment).where(Shipment.order_id == order.id))
     act_freight = sh.freight_amount if sh and sh.freight_amount else None
-    good_qty = sum(w.good_qty for w in wos)
+    good_qty = sum(w.good_qty for w in wos) + sum(a.qty for a in allocs)
     inv = db.scalar(select(TaxInvoice).where(TaxInvoice.order_id == order.id))
     price = {ln.item_code: ln.unit_price for ln in order.lines}
     # 매출: 세금계산서 공급가액, 없으면 양품 × 단가(출하 예정 금액)
-    sales = inv.supply_amount if inv else sum(w.good_qty * price.get(w.item_code, 0) for w in wos)
+    sales = inv.supply_amount if inv else (sum(w.good_qty * price.get(w.item_code, 0) for w in wos)
+                                           + sum(a.qty * price.get(a.item_code, 0) for a in allocs))
 
     std_total = std_mat + sum(std_proc.values()) + std_freight
     act_total = act_mat + sum(act_proc.values()) + (act_freight if act_freight is not None else std_freight)
@@ -121,17 +141,18 @@ def quote(db: Session, length: int, width: int, height: int, board_spec_code: st
         raise ValueError("수량은 1 이상")
     bw, bl = blank_size(length, width, height)
     kg_m2, won_m2 = paper_cost_per_m2(db, board_spec_code)
+    rt = rates(db)
     area = bw * bl / 1e6
-    mat = area * qty * (1 + STD_LOSS) * won_m2
-    proc = _std_process(_equipment(db), qty, print_colors)
-    freight = FREIGHT_BASE + FREIGHT_PER_SHEET * qty
+    mat = area * qty * (1 + rt["loss"]) * won_m2
+    proc = _std_process(_equipment(db), qty, print_colors, rt)
+    freight = rt["freight_base"] + rt["freight_sheet"] * qty
     total = mat + sum(proc.values()) + freight
     unit = total / qty
     rows = [{"label": "재료비(원지)", "amount": round(mat)}]
     rows += [{"label": f"가공비·{PROCESS_KO[p]}", "amount": round(v)} for p, v in proc.items()]
     rows.append({"label": "운반비", "amount": round(freight)})
     return {
-        "blank_w": bw, "blank_l": bl, "area_m2": round(area, 4), "paper_kg": round(area * qty * (1 + STD_LOSS) * kg_m2, 1),
+        "blank_w": bw, "blank_l": bl, "area_m2": round(area, 4), "paper_kg": round(area * qty * (1 + rt["loss"]) * kg_m2, 1),
         "rows": rows, "total_cost": round(total), "unit_cost": round(unit, 1),
         "margin": margin, "suggested_price": round(unit / (1 - margin), -1) if margin < 1 else None,
     }

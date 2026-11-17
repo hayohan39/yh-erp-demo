@@ -74,8 +74,14 @@ def _board_code(flute: str, o: str, m: str, i: str) -> str:
 
 
 def seed(db: Session) -> None:
-    if db.scalar(select(Partner).limit(1)):
-        return
+    from app.seed_extra import seed_extra
+
+    if not db.scalar(select(Partner).limit(1)):
+        _seed_base(db)
+    seed_extra(db)
+
+
+def _seed_base(db: Session) -> None:
     rng = random.Random(20261201)
 
     for code, name, industry in CUSTOMERS:

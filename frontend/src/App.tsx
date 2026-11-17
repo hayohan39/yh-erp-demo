@@ -1,6 +1,6 @@
 import { Button, Layout, Menu, Spin, Typography } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ADMIN_MENU, MENU, findLabel } from "./menu";
 import Dashboard from "./pages/Dashboard";
@@ -14,6 +14,7 @@ import WorkOrders from "./pages/WorkOrders";
 import ProductionBoard from "./pages/ProductionBoard";
 import Defects from "./pages/Defects";
 import DefectAlerts from "./components/DefectAlerts";
+import LiveStatus from "./components/LiveStatus";
 // 3D 화면(three.js)은 해당 메뉴를 열 때만 내려받는다.
 const EquipmentMonitor = lazy(() => import("./pages/EquipmentMonitor"));
 const FacilityMonitor = lazy(() => import("./pages/FacilityMonitor"));
@@ -21,6 +22,16 @@ const SystemArchitecture = lazy(() => import("./pages/SystemArchitecture"));
 import { DispatchBoard, ShippingRequests } from "./pages/Shipping";
 import { Invoices, SalesClose } from "./pages/Settlement";
 import { OrderCosts, QuoteCalculator } from "./pages/Cost";
+import { StockAdjust, StockBalances, StockMoves, StockTransfer } from "./pages/ext/Inventory";
+import { AutoOrder, Expenses, PaperRequirements, PurchaseOrders, Purchases, SubMaterials } from "./pages/ext/Material";
+import { Allocation, Claims, Customers, Receivables, SalesLedger } from "./pages/ext/SalesExt";
+import {
+  Certs, DevCosts, Freight, Outsource, Pallets, Processes, ProductionResults, Specs, Tooling, WorkLogPage,
+} from "./pages/ext/OpsExt";
+import { CommonCodes, CostRates, Prices } from "./pages/ext/MasterExt";
+import { BoxGantt, DispatchPlan, SchedSettings } from "./pages/ext/SchedulingExt";
+import { CostAnalysis, StandardCost } from "./pages/ext/CostExt";
+import MisAnalysis from "./pages/ext/Mis";
 
 const { Sider, Header, Content } = Layout;
 
@@ -31,6 +42,13 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 992);
   const [narrow, setNarrow] = useState(() => window.innerWidth < 992);
   const go = (e: { key: string }) => { nav(e.key); if (narrow) setCollapsed(true); };
+  // 열린 상위 메뉴를 현재 화면에 맞춘다. 대시보드 카드 등으로 다른 모듈 화면에 가도 해당 메뉴가 펼쳐진다.
+  const [openKeys, setOpenKeys] = useState<string[]>(openKey ? [openKey] : []);
+  useEffect(() => {
+    if (openKey) setOpenKeys((ks) => (ks.includes(openKey) ? ks : [...ks, openKey]));
+  }, [openKey]);
+  const title = findLabel(pathname);
+  useEffect(() => { document.title = title ? `${title} · YH 통합 ERP` : "YH 통합 ERP"; }, [title]);
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -40,14 +58,15 @@ export default function App() {
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
         style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, height: "100vh", overflow: "auto", zIndex: 20 }}
       >
-        {/* 접힌 상태(폭 0)에서는 메뉴를 그리지 않는다: 열린 하위 메뉴가 팝업으로 떠 화면을 가리는 문제 방지 */}
+        {/* 접힌 상태(폭 0)에서 Menu를 그리면 펼쳐 둔 하위 메뉴가 팝업으로 본문 위에 떠 있는 문제가 있어 숨긴다 */}
         {!collapsed && <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
           <div style={{ color: "#fff", padding: "18px 20px", fontWeight: 700, fontSize: 16 }}>YH 통합 ERP</div>
           <Menu
             theme="dark"
             mode="inline"
             selectedKeys={[pathname]}
-            defaultOpenKeys={openKey ? [openKey] : []}
+            openKeys={openKeys}
+            onOpenChange={setOpenKeys}
             items={MENU}
             onClick={go}
           />
@@ -65,8 +84,9 @@ export default function App() {
           <Button type="text" aria-label="메뉴 열기/닫기" onClick={() => setCollapsed((c) => !c)}
             icon={collapsed ? <MenuUnfoldOutlined style={{ fontSize: 18 }} /> : <MenuFoldOutlined style={{ fontSize: 18 }} />} />
           <Typography.Title level={4} style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {findLabel(pathname) ?? ""}
+            {title ?? ""}
           </Typography.Title>
+          <LiveStatus />
         </Header>
         {narrow && !collapsed && (
           <div onClick={() => setCollapsed(true)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 15 }} />
@@ -88,7 +108,48 @@ export default function App() {
             <Route path="/shipping/dispatch" element={<DispatchBoard />} />
             <Route path="/cost/orders" element={<OrderCosts />} />
             <Route path="/cost/quote" element={<QuoteCalculator />} />
+            <Route path="/master/codes" element={<CommonCodes />} />
+            <Route path="/master/material-cost" element={<Prices mode="material" />} />
+            <Route path="/master/process-cost" element={<CostRates groups={["PROCESS", "FREIGHT"]} />} />
+            <Route path="/master/prices" element={<Prices mode="sales" />} />
             <Route path="/master/:kind" element={<MasterTable />} />
+            <Route path="/sales/customers" element={<Customers />} />
+            <Route path="/sales/allocation" element={<Allocation />} />
+            <Route path="/sales/ledger" element={<SalesLedger />} />
+            <Route path="/sales/receivables" element={<Receivables />} />
+            <Route path="/sales/claims" element={<Claims />} />
+            <Route path="/scheduling/settings" element={<SchedSettings />} />
+            <Route path="/scheduling/gantt" element={<BoxGantt />} />
+            <Route path="/scheduling/dispatch" element={<DispatchPlan />} />
+            <Route path="/scheduling/auto-order" element={<AutoOrder />} />
+            <Route path="/production/results" element={<ProductionResults />} />
+            <Route path="/production/outsource" element={<Outsource />} />
+            <Route path="/production/adjust" element={<StockAdjust />} />
+            <Route path="/production/work-log" element={<WorkLogPage />} />
+            <Route path="/production/processes" element={<Processes />} />
+            <Route path="/quality/specs" element={<Specs />} />
+            <Route path="/quality/dev-costs" element={<DevCosts />} />
+            <Route path="/quality/certs" element={<Certs />} />
+            <Route path="/quality/tooling" element={<Tooling />} />
+            <Route path="/material/requirements" element={<PaperRequirements />} />
+            <Route path="/material/orders" element={<PurchaseOrders />} />
+            <Route path="/material/purchases" element={<Purchases />} />
+            <Route path="/material/paper-stock" element={<StockBalances kind="PAPER" />} />
+            <Route path="/material/transfer-site" element={<StockTransfer kind="PAPER" mode="site" />} />
+            <Route path="/material/transfer-wh" element={<StockTransfer kind="PAPER" mode="warehouse" />} />
+            <Route path="/material/sub" element={<SubMaterials />} />
+            <Route path="/material/expenses" element={<Expenses />} />
+            <Route path="/shipping/moves" element={<StockMoves kind="PRODUCT" />} />
+            <Route path="/shipping/stock" element={<StockBalances kind="PRODUCT" />} />
+            <Route path="/shipping/transfer-wh" element={<StockTransfer kind="PRODUCT" mode="warehouse" />} />
+            <Route path="/shipping/transfer-site" element={<StockTransfer kind="PRODUCT" mode="site" />} />
+            <Route path="/shipping/freight" element={<Freight />} />
+            <Route path="/shipping/pallets" element={<Pallets />} />
+            <Route path="/cost/settings" element={<CostRates groups={["COST", "PROCESS"]} />} />
+            <Route path="/cost/standard" element={<StandardCost />} />
+            <Route path="/cost/analysis" element={<CostAnalysis />} />
+            <Route path="/mis/trend" element={<Navigate to="/mis/sales" replace />} />
+            <Route path="/mis/:metric" element={<MisAnalysis />} />
             <Route path="/scheduling/corrugator" element={<CorrugatorPlan />} />
             <Route path="/production/work-orders" element={<WorkOrders />} />
             <Route path="/production/board" element={<ProductionBoard />} />
