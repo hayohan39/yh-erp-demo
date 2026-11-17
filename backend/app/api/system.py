@@ -15,8 +15,7 @@ router = APIRouter(prefix="/api", tags=["시스템"])
 
 @router.get("/health")
 def health(db: Session = Depends(get_db)):
-    probe = "SELECT 1 FROM DUAL" if engine.dialect.name == "oracle" else "SELECT 1"
-    db.execute(text(probe))
+    db.execute(text("SELECT 1"))
     return {"status": "ok", "app": settings.app_name, "db": engine.dialect.name}
 
 

@@ -39,6 +39,9 @@ class SimState:
         self.seq = 0
         self.task: asyncio.Task | None = None
         self.rng = random.Random(1201)
+        self.defect_spike = False  # 시연용: 다음 인쇄 작업 1건 불량 급증
+        self.prod_tasks: set[asyncio.Task] = set()
+        self.wo_state: dict[str, str] = {}  # wo_no -> QUEUED/CORRUGATE/PRINT/CONVERT/DONE
 
 
 state = SimState()
@@ -121,12 +124,17 @@ def health():
 
 @app.get("/api/sim/status")
 def status():
+    counts: dict[str, int] = {}
+    for v in state.wo_state.values():
+        counts[v] = counts.get(v, 0) + 1
     return {
         "running": state.running,
         "speed": state.speed,
         "sent": state.sent,
         "failed": state.failed,
         "received": len(state.received),
+        "defect_spike": state.defect_spike,
+        "production": counts,
     }
 
 
@@ -170,6 +178,11 @@ async def oms_order(large: bool = False):
 async def reset():
     """데모 초기화: 시뮬레이터 정지 후 ERP 데이터를 기준정보 상태로 되돌린다."""
     await stop()
+    for t in list(state.prod_tasks):
+        t.cancel()
+    state.prod_tasks.clear()
+    state.wo_state.clear()
+    state.defect_spike = False
     async with httpx.AsyncClient(base_url=settings.erp_url, timeout=120) as c:
         (await c.post("/api/admin/reset")).raise_for_status()
     state.sent = state.failed = state.seq = 0
@@ -179,12 +192,32 @@ async def reset():
 
 
 @app.post("/api/sim/inbound")
-def inbound(env: dict[str, Any]):
+async def inbound(env: dict[str, Any]):
     """ERP → 레거시 메시지 수신 (생산지시, 배차요청 등). 이후 설비·외부 시뮬레이터가 이 지시로 동작한다."""
     state.received.appendleft({**env, "received_at": datetime.now(timezone.utc).isoformat()})
+    if env.get("if_id") == "IF-MES-01":
+        for wo in env["payload"]["work_orders"]:
+            state.wo_state[wo["wo_no"]] = "QUEUED"
+            t = asyncio.create_task(factory.run_work_order(wo))
+            state.prod_tasks.add(t)
+            t.add_done_callback(state.prod_tasks.discard)
     return {"ack": True}
+
+
+class SpikeIn(BaseModel):
+    on: bool
+
+
+@app.post("/api/sim/defect-spike")
+def defect_spike(body: SpikeIn):
+    """시연용: 다음 인쇄 작업 1건의 불량률을 높여 품질 알림 장면을 만든다."""
+    state.defect_spike = body.on
+    return status()
 
 
 @app.get("/api/sim/received")
 def received():
     return list(state.received)
+
+
+from app import factory  # noqa: E402  - factory가 이 모듈의 state·send_envelope를 쓰므로 마지막에 import

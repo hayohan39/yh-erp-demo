@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/menu.tsx","./src/api/client.ts","./src/api/useEvents.ts","./src/pages/Dashboard.tsx","./src/pages/IfMonitor.tsx","./src/pages/MasterTable.tsx","./src/pages/Placeholder.tsx","./src/pages/SalesOrders.tsx","./src/pages/SimulatorControl.tsx"],"version":"5.6.3"}
