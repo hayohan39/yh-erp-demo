@@ -35,7 +35,8 @@ jobs:
         if: env.HAS_SECRETS == 'true'
         run: |
           ssh -i ~/.ssh/id_deploy "$TARGET" \
-            "DB_PASSWORD='${{ secrets.DB_PASSWORD }}' bash ~/yh-erp-demo/scripts/deploy.sh"
+            "DB_PASSWORD='${{ secrets.DB_PASSWORD }}' DEMO_HOST='${{ secrets.DEPLOY_HOST }}' bash ~/yh-erp-demo/scripts/deploy.sh"
       - name: 접속 주소
         if: env.HAS_SECRETS == 'true'
-        run: echo "::notice::데모 주소 http://${{ secrets.DEPLOY_HOST }}/"
+        run: |
+          echo "::notice::데모 주소 https://<고정 IP의 점(.)을 하이픈(-)으로 바꾼 값>.sslip.io/ — 예시 13.54.1.2 → https://13-54-1-2.sslip.io/"

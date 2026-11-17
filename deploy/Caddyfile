@@ -1,0 +1,11 @@
+# 데모 서버용 HTTPS 프록시. SITE_DOMAIN(예: 13-54-1-2.sslip.io)에 Let's Encrypt 인증서를 자동 발급하고
+# 모든 요청을 web(nginx) 컨테이너로 넘긴다. SSE(/api/events)는 Caddy가 즉시 flush 한다.
+{$SITE_DOMAIN} {
+	encode gzip
+	reverse_proxy web:80
+}
+
+# 고정 IP로 http 접속하면 https 도메인 주소로 보낸다.
+http:// {
+	redir https://{$SITE_DOMAIN}{uri} 302
+}
