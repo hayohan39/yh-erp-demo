@@ -1,6 +1,6 @@
-import { Button, Card, Descriptions, InputNumber, Popconfirm, Segmented, Space, Switch, message } from "antd";
+import { Badge, Button, Card, Descriptions, InputNumber, Popconfirm, Segmented, Space, Switch, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { api, post } from "../api/client";
+import { api, errMsg, post } from "../api/client";
 
 interface SimStatus {
   running: boolean; speed: number; sent: number; failed: number; received: number;
@@ -18,7 +18,7 @@ export default function SimulatorControl() {
   }, [load]);
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
-    try { await fn(); message.success(ok); } catch (e) { message.error(String(e)); }
+    try { await fn(); message.success(ok); } catch (e) { message.error(errMsg(e)); }
     load();
   };
 
@@ -26,7 +26,7 @@ export default function SimulatorControl() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Card title="레거시 I/F 시뮬레이터">
         <Descriptions column={{ xs: 1, md: 3 }} items={[
-          { label: "상태", children: st?.running ? "실행 중" : "정지" },
+          { label: "상태", children: <Badge status={st?.running ? "processing" : "default"} text={st?.running ? "실행 중" : "정지"} /> },
           { label: "배속", children: `${st?.speed ?? "-"}x` },
           { label: "ERP 송신 / 실패", children: `${st?.sent ?? 0} / ${st?.failed ?? 0}` },
           { label: "ERP 지시 수신", children: st?.received ?? 0 },
@@ -56,7 +56,7 @@ export default function SimulatorControl() {
             다음 인쇄 작업 불량 발생{" "}
             <Switch checked={st?.defect_spike} onChange={(on) => run(() => post("/api/sim/defect-spike", { on }), on ? "다음 인쇄 작업에서 불량이 발생합니다" : "취소")} />
           </span>
-          <Popconfirm title="모든 거래 데이터를 지우고 기준정보 상태로 되돌립니다." onConfirm={() => run(() => post("/api/sim/reset"), "초기화 완료")}>
+          <Popconfirm title="모든 거래 데이터를 지우고 기준정보 상태로 되돌립니다." okText="초기화" cancelText="취소" okButtonProps={{ danger: true }} onConfirm={() => run(() => post("/api/sim/reset"), "초기화 완료")}>
             <Button danger>데모 초기화</Button>
           </Popconfirm>
         </Space>

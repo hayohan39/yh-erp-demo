@@ -1,4 +1,4 @@
-import { Badge, Card, Col, Empty, List, Row, Typography } from "antd";
+import { Badge, Card, Col, List, Row, Typography } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
@@ -10,7 +10,7 @@ function Section({ title, color, rows, done }: { title: string; color: string; r
   return (
     <>
       <Typography.Text strong><Badge color={color} text={`${title} ${rows.length}`} /></Typography.Text>
-      {rows.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="" style={{ margin: 4 }} /> : (
+      {rows.length === 0 ? <div style={{ color: "#94a3b8", fontSize: 12, padding: "6px 0 10px 14px" }}>없음</div> : (
         <List size="small" dataSource={done ? rows.slice(-5).reverse() : rows} renderItem={(c) => (
           <List.Item style={{ padding: "4px 0" }}>
             <div style={{ width: "100%" }}>

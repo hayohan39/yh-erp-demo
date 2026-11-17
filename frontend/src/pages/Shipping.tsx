@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Space, Steps, Table, Tag, Typography, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { api, post } from "../api/client";
+import { api, errMsg, post } from "../api/client";
 import { useEvents } from "../api/useEvents";
 import { dt, num, won } from "../status";
 
@@ -30,7 +30,7 @@ function useShipments() {
 
 function ShipmentTable({ rows, compact }: { rows: ShipmentRow[]; compact?: boolean }) {
   return (
-    <Table rowKey="shipment_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: true }}
+    <Table rowKey="shipment_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: "max-content" }}
       locale={{ emptyText: "출하 내역이 없습니다" }}
       columns={[
         { title: "출하번호", dataIndex: "shipment_no" },
@@ -68,7 +68,7 @@ export function ShippingRequests() {
     try {
       const r = await post<{ shipment_no: string }>("/api/shipping/requests", { order_no });
       message.success(`${r.shipment_no} 출하요청 → 로지스팟 배차요청 전송`);
-    } catch (e) { message.error(String(e)); }
+    } catch (e) { message.error(errMsg(e)); }
     setBusy(undefined);
     void load();
   };
@@ -77,7 +77,7 @@ export function ShippingRequests() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Card title="출하 대기 (생산완료 수주)" extra={<Typography.Text type="secondary">출하요청을 누르면 상차정보가 로지스팟으로 전송됩니다</Typography.Text>}>
         {ready.length === 0 ? <Empty description="생산이 끝난 수주가 없습니다" /> : (
-          <Table rowKey="order_no" dataSource={ready} pagination={false} size="middle" scroll={{ x: true }}
+          <Table rowKey="order_no" dataSource={ready} pagination={false} size="middle" scroll={{ x: "max-content" }}
             columns={[
               { title: "수주번호", dataIndex: "order_no" },
               { title: "거래처", dataIndex: "customer_name" },
