@@ -20,14 +20,14 @@
 | `simulator/` | 레거시 I/F 시뮬레이터. 시작·정지·배속·수동 주문·데모 초기화 |
 | `frontend/` | React + TypeScript + Ant Design. 9개 모듈 메뉴, 대시보드, 수주 현황, 기준정보, I/F 모니터, 시뮬레이터 제어 |
 | `docker-compose.yml` | db(PostgreSQL) · backend · simulator · web 4개 서비스 |
-| `scripts/deploy.sh` | Oracle Cloud VM 배포 스크립트 (Actions가 실행) |
-| `docs/oracle-cloud-setup.md` | **OCI 계정·VM·시크릿 설정 안내** |
+| `scripts/deploy.sh` | 클라우드 서버 배포 스크립트 (Actions가 실행) |
+| `docs/aws-lightsail-setup.md` | **AWS 계정·Lightsail 서버·시크릿 설정 안내** |
 
 ## 실행 환경
 
 모든 실행은 클라우드에서 합니다. 개인 PC에 설치할 것은 없습니다.
 
-- **배포**: Oracle Cloud VM(Ampere A1, Always Free) 1대. `main` 머지 시 GitHub Actions가 자동 배포합니다. 최초 설정은 [docs/oracle-cloud-setup.md](docs/oracle-cloud-setup.md)를 따르세요.
+- **배포**: AWS Lightsail 서울 리전 서버(2GB) 1대. `main` 머지 시 GitHub Actions가 자동 배포합니다. 최초 설정은 [docs/aws-lightsail-setup.md](docs/aws-lightsail-setup.md)를 따르세요.
 - **검증**: PR마다 GitHub Actions(CI)가 백엔드 테스트, 프론트 빌드, PostgreSQL 포함 전체 스택 기동과 주문 I/F 흐름을 확인합니다.
 
 ## 지금 동작하는 흐름
