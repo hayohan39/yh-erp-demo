@@ -62,6 +62,24 @@ def _to_dict(m: IfMessage) -> dict[str, Any]:
     }
 
 
+_KEY_FIELDS = ("wo_no", "erp_order_no", "order_no", "oms_order_no", "plan_no", "invoice_no", "shipment_no")
+
+
+def _event_dict(m: IfMessage) -> dict[str, Any]:
+    """SSE용: I/F 이름과 업무 키(주문번호·지시번호 등)를 붙여 화면이 흐름을 그릴 수 있게 한다."""
+    d = _to_dict(m)
+    d["name"] = IF_BY_ID[m.if_id].name if m.if_id in IF_BY_ID else m.if_id
+    try:
+        p = json.loads(m.payload)
+    except (TypeError, ValueError):
+        p = {}
+    if not isinstance(p, dict):
+        p = {}
+    d["key"] = next((str(p[k]) for k in _KEY_FIELDS if p.get(k)), "")
+    d["detail"] = str(p.get("status") or p.get("event") or "")
+    return d
+
+
 def message_to_dict(m: IfMessage, with_payload: bool = False) -> dict[str, Any]:
     d = _to_dict(m)
     if with_payload:
@@ -85,7 +103,7 @@ def _run_handler(db: Session, msg: IfMessage) -> dict[str, Any] | None:
         log.warning("I/F 처리 실패 %s %s: %s", msg.if_id, msg.message_id, exc)
     msg.processed_at = now()
     db.commit()
-    events.publish("if_message", _to_dict(msg))
+    events.publish("if_message", _event_dict(msg))
     # 핸들러가 요청한 후속 송신은 수신 트랜잭션이 커밋된 뒤에 보낸다.
     if msg.status == "PROCESSED" and result:
         for out_if_id, out_payload in result.pop("_send", []):
@@ -169,4 +187,4 @@ def _deliver(db: Session, msg: IfMessage) -> None:
             msg.error_msg = str(exc)[:2000]
     msg.processed_at = now()
     db.commit()
-    events.publish("if_message", _to_dict(msg))
+    events.publish("if_message", _event_dict(msg))

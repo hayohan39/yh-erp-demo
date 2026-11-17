@@ -78,3 +78,17 @@ def test_equipment_start_event_marks_running(client):
     board = {b["equipment_code"]: b for b in client.get("/api/production/board").json()}
     assert [c["wo_no"] for c in board["CG01"]["run"]] == [wo_no]
     assert client.get("/api/sales/orders").json()[0]["status"] == "IN_PROD"
+    fac = client.get("/api/monitor/factory").json()
+    cg = next(m for m in fac["machines"] if m["code"] == "CG01")
+    assert cg["status"] == "RUN" and cg["current"]["wo_no"] == wo_no and cg["current"]["expected_minutes"] > 0
+    assert len(fac["papers"]) == 8 and fac["work_orders"]["in_prod"] == 1
+    ifs = {r["if_id"]: r for r in client.get("/api/monitor/interfaces").json()}
+    assert len(ifs) == 18 and ifs["IF-OMS-01"]["total"] == 1 and ifs["IF-EQ-02"]["total"] == 1
+
+
+def test_factory_after_full_flow(client):
+    test_order_to_production_flow(client)
+    fac = client.get("/api/monitor/factory").json()
+    assert all(m["status"] == "IDLE" for m in fac["machines"])
+    assert fac["paper_used_kg"] > 0 and fac["products"]["total_qty"] > 0
+    assert any(p["stock_kg"] < p["opening_kg"] for p in fac["papers"])

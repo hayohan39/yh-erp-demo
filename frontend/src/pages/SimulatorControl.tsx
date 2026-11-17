@@ -1,4 +1,4 @@
-import { Button, Card, Descriptions, InputNumber, Popconfirm, Space, Switch, message } from "antd";
+import { Button, Card, Descriptions, InputNumber, Popconfirm, Segmented, Space, Switch, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { api, post } from "../api/client";
 
@@ -9,8 +9,8 @@ interface SimStatus {
 
 export default function SimulatorControl() {
   const [st, setSt] = useState<SimStatus>();
-  const [speed, setSpeed] = useState(1);
-  const load = useCallback(() => api<SimStatus>("/api/sim/status").then((s) => { setSt(s); setSpeed(s.speed); }), []);
+  const [speed, setSpeed] = useState<number | null>(null); // 직접 입력값. 자동 갱신이 덮어쓰지 않는다
+  const load = useCallback(() => api<SimStatus>("/api/sim/status").then(setSt), []);
   useEffect(() => {
     void load();
     const t = setInterval(load, 3000);
@@ -38,8 +38,14 @@ export default function SimulatorControl() {
         <Space wrap style={{ marginTop: 16 }}>
           <Button type="primary" disabled={st?.running} onClick={() => run(() => post("/api/sim/start"), "시작")}>시작</Button>
           <Button disabled={!st?.running} onClick={() => run(() => post("/api/sim/stop"), "정지")}>정지</Button>
-          <InputNumber min={0.1} max={60} step={1} value={speed} onChange={(v) => setSpeed(v ?? 1)} addonAfter="배속" />
-          <Button onClick={() => run(() => post("/api/sim/speed", { speed }), "배속 변경")}>적용</Button>
+          <span>배속</span>
+          <Segmented
+            value={[1, 5, 10, 20, 30].includes(st?.speed ?? 0) ? st?.speed : undefined}
+            options={[1, 5, 10, 20, 30].map((v) => ({ label: `${v}x`, value: v }))}
+            onChange={(v) => run(() => post("/api/sim/speed", { speed: Number(v) }), `배속 ${v}x 적용`)}
+          />
+          <InputNumber min={0.1} max={60} step={1} value={speed} placeholder="직접" onChange={(v) => setSpeed(v)} style={{ width: 90 }} />
+          <Button disabled={!speed} onClick={() => run(() => post("/api/sim/speed", { speed }), `배속 ${speed}x 적용`)}>적용</Button>
         </Space>
       </Card>
       <Card title="수동 발생 (시연용)">

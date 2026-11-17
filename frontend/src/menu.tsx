@@ -1,7 +1,7 @@
 import {
   AppstoreOutlined, BarChartOutlined, CalculatorOutlined, CarOutlined, DashboardOutlined,
   DatabaseOutlined, ExperimentOutlined, ApiOutlined, ScheduleOutlined, ShoppingCartOutlined,
-  ToolOutlined, InboxOutlined,
+  ToolOutlined, InboxOutlined, RadarChartOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
 
@@ -15,6 +15,13 @@ export interface MenuNode {
 /** ERP 9개 모듈 + 공통. 화면이 아직 없는 메뉴는 '준비 중' 페이지로 연결된다. */
 export const MENU: MenuNode[] = [
   { key: "/dashboard", label: "경영 대시보드", icon: <DashboardOutlined /> },
+  {
+    key: "monitor", label: "실시간 모니터링", icon: <RadarChartOutlined />,
+    children: [
+      { key: "/monitor/factory", label: "공장 모니터링 맵" },
+      { key: "/monitor/interfaces", label: "시스템 연동 맵" },
+    ],
+  },
   {
     key: "master", label: "기준정보", icon: <DatabaseOutlined />,
     children: [
