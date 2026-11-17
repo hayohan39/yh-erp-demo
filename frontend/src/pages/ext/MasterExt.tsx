@@ -1,14 +1,10 @@
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Space, Table, Tabs, Tag, Typography, message } from "antd";
 import { useState } from "react";
-import { post } from "../../api/client";
+import { api, post } from "../../api/client";
 import { pct, useApi } from "../../components/common";
 import { dt, num, won } from "../../status";
 
-const put = async (url: string, body: unknown) => {
-  const r = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-};
+const put = (url: string, body: unknown) => api(url, { method: "PUT", body: JSON.stringify(body) });
 
 interface CodeGroup { group_code: string; group_name: string; codes: { code: string; name: string }[] }
 

@@ -1,14 +1,10 @@
 import { Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
-import { post } from "../../api/client";
+import { api, post } from "../../api/client";
 import { KpiRow, PROCESS_COLOR, UsageBar, pct, useApi } from "../../components/common";
 import { dt, num, won } from "../../status";
 
-const req = async (url: string, body: unknown, method: string) => {
-  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-};
+const req = (url: string, body: unknown, method: string) => api(url, { method, body: JSON.stringify(body) });
 
 // ================================================================ 출하관리
 interface PalletData {

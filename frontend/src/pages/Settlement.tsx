@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Space, Table, Tag, Typography, message } from "antd";
-import { useCallback, useEffect, useState } from "react";
-import { api, post } from "../api/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, errMsg, post } from "../api/client";
 import { useEvents } from "../api/useEvents";
 import { dt, won } from "../status";
 
@@ -23,7 +23,14 @@ export function SalesClose() {
   const [rows, setRows] = useState<Closable[]>([]);
   const [sel, setSel] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const load = useCallback(() => api<Closable[]>("/api/settlement/closable").then((r) => { setRows(r); setSel(r.map((x) => x.order_no)); }), []);
+  // 새로 고칠 때 사용자가 해제한 선택은 유지하고, 새로 생긴 마감 대상만 기본 선택한다.
+  const known = useRef<Set<string>>(new Set());
+  const load = useCallback(() => api<Closable[]>("/api/settlement/closable").then((r) => {
+    setRows(r);
+    const ids = new Set(r.map((x) => x.order_no));
+    setSel((prev) => [...prev.filter((k) => ids.has(k)), ...r.map((x) => x.order_no).filter((k) => !known.current.has(k))]);
+    known.current = ids;
+  }), []);
   useEffect(() => void load(), [load]);
   useEvents(["sales_order", "reset"], () => void load());
 
@@ -32,7 +39,7 @@ export function SalesClose() {
     try {
       const r = await post<{ invoices: string[] }>("/api/settlement/close", { order_nos: sel });
       message.success(`매출 마감 ${r.invoices.length}건 → 위아고 세금계산서 발행 요청`);
-    } catch (e) { message.error(String(e)); }
+    } catch (e) { message.error(errMsg(e)); }
     setBusy(false);
     void load();
   };
@@ -45,7 +52,7 @@ export function SalesClose() {
         <Button type="primary" disabled={!sel.length} loading={busy} onClick={close}>매출 마감 · 세금계산서 발행</Button>
       </Space>}>
       {rows.length === 0 ? <Empty description="출하완료된 수주가 없습니다" /> : (
-        <Table rowKey="order_no" dataSource={rows} pagination={false} size="middle" scroll={{ x: true }}
+        <Table rowKey="order_no" dataSource={rows} pagination={false} size="middle" scroll={{ x: "max-content" }}
           rowSelection={{ selectedRowKeys: sel, onChange: (k) => setSel(k as string[]) }}
           columns={[
             { title: "수주번호", dataIndex: "order_no" },
@@ -87,7 +94,7 @@ export function Invoices() {
       a.click();
       URL.revokeObjectURL(url);
       message.success(`더존 전표 ${res.headers.get("X-Voucher-Count")}건을 엑셀(CSV)로 내보냈습니다`);
-    } catch (e) { message.error(String(e)); }
+    } catch (e) { message.error(errMsg(e)); }
     setBusy(false);
     load();
   };
@@ -96,7 +103,7 @@ export function Invoices() {
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Card title="전자세금계산서 (위아고)">
-        <Table rowKey="invoice_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: true }}
+        <Table rowKey="invoice_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: "max-content" }}
           locale={{ emptyText: "발행 내역이 없습니다" }}
           columns={[
             { title: "계산서번호", dataIndex: "invoice_no" },
@@ -114,7 +121,7 @@ export function Invoices() {
       </Card>
       <Card title="더존 회계 전표" extra={
         <Button type="primary" disabled={!pending} loading={busy} onClick={exportCsv}>새 전표 {pending}건 엑셀 내보내기</Button>}>
-        <Table rowKey={(r) => `${r.invoice_no}-${r.account_code}`} dataSource={vouchers} size="small" pagination={{ pageSize: 12 }} scroll={{ x: true }}
+        <Table rowKey={(r) => `${r.invoice_no}-${r.account_code}`} dataSource={vouchers} size="small" pagination={{ pageSize: 12 }} scroll={{ x: "max-content" }}
           locale={{ emptyText: "세금계산서가 발행되면 매출 전표가 자동으로 만들어집니다" }}
           columns={[
             { title: "전표", dataIndex: "voucher_no" },

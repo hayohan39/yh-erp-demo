@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Col, Descriptions, Empty, Form, InputNumber, Row, Select, Slider, Space, Statistic, Table, Tag, Typography } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { api, post } from "../api/client";
+import { api, errMsg, post } from "../api/client";
 import { useEvents } from "../api/useEvents";
 import { OrderStatus, num, won } from "../status";
 
@@ -53,7 +53,7 @@ export function OrderCosts() {
         <Col xs={12} lg={6}><Card><Statistic title="표준 대비 차이" value={act - std} suffix="원" valueStyle={{ color: act > std ? "#dc2626" : "#16a34a" }} prefix={act > std ? "+" : ""} /></Card></Col>
       </Row>
       <Card title="수주별 원가" extra={<Typography.Text type="secondary">행을 펼치면 항목별 표준·실제를 비교합니다</Typography.Text>}>
-        <Table rowKey="order_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: true }}
+        <Table rowKey="order_no" dataSource={rows} size="middle" pagination={{ pageSize: 10 }} scroll={{ x: "max-content" }}
           locale={{ emptyText: <Empty description="생산이 끝난 수주부터 원가가 계산됩니다" /> }}
           expandable={{
             expandedRowRender: (r) => (
@@ -120,7 +120,7 @@ export function QuoteCalculator() {
     try {
       setQ(await post<Quote>("/api/cost/quote", { ...v, margin: (v.margin ?? 15) / 100 }));
       setErr(undefined);
-    } catch (e) { setErr(String(e)); }
+    } catch (e) { setErr(errMsg(e)); }
   };
   const pick = (code: string) => {
     const it = items.find((i) => i.code === code);
