@@ -7,3 +7,4 @@ from app.models.production import (  # noqa: F401
 from app.models.quality import Defect  # noqa: F401
 from app.models.sales import SalesOrder, SalesOrderLine  # noqa: F401
 from app.models.scheduling import CorrugatorRun, RunSlot, SchedulePlan  # noqa: F401
+from app.models.shipping import Shipment, ShipmentLine, TaxInvoice  # noqa: F401

@@ -34,6 +34,8 @@ const P_TO_PRINT: Pt[] = [[770, 170], [1040, 170], [1040, 300]];
 const P_DIRECT: Pt[] = [[770, 170], [1040, 170], [1040, 270], [870, 270], [870, 535], [830, 535]];
 const P_PRINT_EV: Pt[] = [[1040, 460], [1040, 535], [830, 535]];
 const P_EV_STOCK: Pt[] = [[540, 535], [500, 535]];
+const P_STOCK_TRUCK: Pt[] = [[300, 560], [270, 535], [175, 560]];
+const P_SHIP_IF: Pt[] = [[280, BAR_Y], [280, 445], [130, 445], [130, BOX.SHIP.y]];
 const CENTER: Record<string, number> = { PMS: 140, CG01: 535, PR05: 1040, EV01: 685, CONV: 1040 };
 const instrPath = (x: number, y: number): Pt[] => [[x, BAR_Y], [x, y]];
 const IF_TARGET: Record<string, { at: string; y: number }> = {
@@ -52,6 +54,8 @@ const css = `
 .fm-press{animation:fm-press .7s ease-in-out infinite}
 .fm-blink{animation:fm-blink .9s step-start infinite}
 .fm-glow{filter:drop-shadow(0 0 6px #22c55e)}
+.fm-drive{animation:fm-drive 3s ease-in forwards}
+@keyframes fm-drive{0%{transform:translateX(0);opacity:1}100%{transform:translateX(-260px);opacity:0}}
 .fm-alarm{filter:drop-shadow(0 0 10px #ef4444)}
 @keyframes fm-spin{to{transform:rotate(360deg)}}
 @keyframes fm-dash{to{stroke-dashoffset:-23}}
@@ -119,6 +123,7 @@ export default function FactoryMap() {
   const [flash, setFlash] = useState<Record<string, number>>({});
   const [log, setLog] = useState<LogRow[]>([]);
   const [, setTick] = useState(0);
+  const [truck, setTruck] = useState<{ status: "NONE" | "DISPATCHED" | "LEAVING"; vehicle?: string; key: number }>({ status: "NONE", key: 0 });
   const { tokens, clock, add } = useTokens();
   const timer = useRef<number>();
   const logSeq = useRef(1);
@@ -139,15 +144,19 @@ export default function FactoryMap() {
 
   const ms = (base: number) => Math.max(900, base / Math.sqrt(Math.max(speed, 1) / 2));
 
-  useEvents(["if_message", "production", "defect", "defect_closed", "work_order", "reset"], (name, raw) => {
+  useEvents(["if_message", "production", "defect", "defect_closed", "work_order", "shipment", "invoice", "reset"], (name, raw) => {
     const d = raw as Record<string, string>;
-    if (name === "reset") { setLog([]); reload(); return; }
+    if (name === "reset") { setLog([]); setTruck((t) => ({ status: "NONE", key: t.key + 1 })); reload(); return; }
     if (name === "if_message") {
       const e = raw as IfEvent;
       if (e.status === "RECEIVED") return;
       const tgt = IF_TARGET[e.if_id];
       const failed = e.status === "FAILED";
-      if (tgt) {
+      if (e.if_id === "IF-EXT-02") {
+        const out = e.direction === "OUT";
+        add({ pts: out ? P_SHIP_IF : [...P_SHIP_IF].reverse(), dur: ms(1800), color: failed ? C.alarm : "#14b8a6",
+          shape: out ? "mail" : "dot", label: out ? "로지스팟 배차요청" : `로지스팟 ${e.detail === "SHIPPED" ? "상차 완료" : "배차 확정"}` });
+      } else if (tgt) {
         const x = CENTER[tgt.at];
         const pts = instrPath(x, tgt.y);
         const out = e.direction === "OUT";
@@ -188,6 +197,20 @@ export default function FactoryMap() {
       addLog(`불량 경보 ${d.equipment_code} ${d.defect_type} ${(Number(d.defect_rate) * 100).toFixed(1)}%`, C.alarm);
     }
     if (name === "work_order") addLog(`계획 확정: 생산지시 ${d.count}건 발행`, C.erp);
+    if (name === "shipment") {
+      if (d.status === "REQUESTED") addLog(`출하요청 ${d.shipment_no} (${d.order_no})`, "#14b8a6");
+      if (d.status === "DISPATCHED") {
+        setTruck((t) => ({ status: "DISPATCHED", vehicle: d.vehicle_no, key: t.key + 1 }));
+        addLog(`로지스팟 배차 확정: ${d.vehicle_no}`, "#14b8a6");
+      }
+      if (d.status === "SHIPPED") {
+        [0, 300, 600].forEach((delay) => add({ pts: P_STOCK_TRUCK, dur: ms(1300), color: "#c08a3e", shape: "box" }, delay));
+        window.setTimeout(() => setTruck((t) => ({ ...t, status: "LEAVING", key: t.key + 1 })), 1500);
+        window.setTimeout(() => setTruck((t) => ({ status: "NONE", key: t.key + 1 })), 5000);
+        addLog(`상차 완료·출발: ${d.vehicle_no} ${Number(d.qty).toLocaleString()}매`, "#14b8a6");
+      }
+    }
+    if (name === "invoice") addLog(`세금계산서 발행 완료 ${d.invoice_no}`, "#a855f7");
     reload();
   });
 
@@ -320,10 +343,19 @@ export default function FactoryMap() {
               <rect x={BOX.SHIP.x} y={BOX.SHIP.y} width={BOX.SHIP.w} height={BOX.SHIP.h} rx={10} fill={C.panel} stroke={C.line} strokeDasharray="6 4" />
               <text x={BOX.SHIP.x + 14} y={BOX.SHIP.y + 24} fill={C.text} fontSize={15} fontWeight={700}>출하장</text>
               <text x={BOX.SHIP.x + 70} y={BOX.SHIP.y + 24} fill={C.sub} fontSize={11}>로지스팟 배차</text>
+              <path d={polyD(P_SHIP_IF)} stroke="#134e4a" strokeDasharray="3 5" fill="none" />
               <g transform={`translate(${BOX.SHIP.x + 40},${BOX.SHIP.y + 60})`}>
-                <rect width={90} height={44} rx={3} fill="#334155" /><rect x={90} y={14} width={36} height={30} rx={3} fill="#475569" />
-                <circle cx={22} cy={50} r={9} fill="#0f172a" stroke="#94a3b8" /><circle cx={104} cy={50} r={9} fill="#0f172a" stroke="#94a3b8" />
+                <g key={truck.key} className={truck.status === "LEAVING" ? "fm-drive" : ""} opacity={truck.status === "NONE" ? 0.25 : 1}>
+                  <rect x={36} y={0} width={90} height={44} rx={3} fill={truck.status === "NONE" ? "#334155" : "#0f766e"} />
+                  <rect x={0} y={14} width={36} height={30} rx={3} fill={truck.status === "NONE" ? "#475569" : "#14b8a6"} />
+                  <rect x={5} y={18} width={16} height={11} rx={2} fill="#ccfbf1" opacity={0.7} />
+                  <circle cx={18} cy={50} r={9} fill="#0f172a" stroke="#94a3b8" /><circle cx={104} cy={50} r={9} fill="#0f172a" stroke="#94a3b8" />
+                  {truck.vehicle && truck.status !== "NONE" && <text x={81} y={27} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={700}>{truck.vehicle}</text>}
+                </g>
               </g>
+              <text x={BOX.SHIP.x + 14} y={BOX.SHIP.y + 128} fill={C.sub} fontSize={11}>
+                {truck.status === "NONE" ? "배차 대기" : truck.status === "DISPATCHED" ? "차량 도착 · 상차 중" : "출발"}
+              </text>
               <path d={polyD([[270, 535], [240, 535]])} stroke="#475569" strokeWidth={14} />
 
               {tokens.map((k) => <TokenShape key={k.id} k={k} clock={clock} />)}

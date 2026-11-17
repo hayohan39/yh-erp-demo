@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
+import { ORDER_STATUS } from "../status";
 
 interface Summary {
   month: string;
@@ -12,19 +13,19 @@ interface Summary {
   scheduling: { saved_amount: number; saved_paper_kg: number };
   defects_open: number;
   interfaces: Record<string, number>;
+  sales: { invoiced_amount: number; invoices: number };
+  shipping: { shipped: number; freight: number; in_progress: number };
+  cost: { orders: number; cost_rate: number | null; profit: number; variance: number };
 }
 
-const STAGES: [string, string][] = [
-  ["RECEIVED", "수주접수"], ["PLANNED", "계획"], ["IN_PROD", "생산중"], ["PRODUCED", "생산완료"],
-  ["SHIPPED", "출하완료"], ["CLOSED", "마감"],
-];
+const STAGES = ORDER_STATUS;
 
 export default function Dashboard() {
   const nav = useNavigate();
   const [s, setS] = useState<Summary>();
   const load = useCallback(() => api<Summary>("/api/dashboard/summary").then(setS), []);
   useEffect(() => void load(), [load]);
-  useEvents(["sales_order", "if_message", "production", "schedule", "defect", "defect_closed", "reset"], () => void load());
+  useEvents(["sales_order", "if_message", "production", "schedule", "defect", "defect_closed", "shipment", "invoice", "reset"], () => void load());
 
   const ifTotal = s ? Object.values(s.interfaces).reduce((a, b) => a + b, 0) : 0;
   const ifFailed = s?.interfaces.FAILED ?? 0;
@@ -60,9 +61,9 @@ export default function Dashboard() {
         <Card title="수주 진행 단계">
           <Row gutter={8}>
             {STAGES.map(([k, label]) => (
-              <Col key={k} span={4} style={{ textAlign: "center" }}>
+              <Col key={k} span={3} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 28, fontWeight: 600 }}>{s?.order_status[k] ?? 0}</div>
-                <div style={{ color: "#64748b" }}>{label}</div>
+                <div style={{ color: "#64748b", fontSize: 12, whiteSpace: "nowrap" }}>{label}</div>
               </Col>
             ))}
           </Row>
@@ -74,8 +75,26 @@ export default function Dashboard() {
           {ifFailed ? <Tag color="red">실패 {ifFailed}건</Tag> : <Tag color="green">전체 정상</Tag>}
         </Card>
       </Col>
-      <Col span={24}>
-        <Card size="small">출하·매출·원가율 지표는 해당 모듈 개발 후 표시됩니다.</Card>
+      <Col xs={24} sm={12} lg={8}>
+        <Card hoverable onClick={() => nav("/sales/invoice")}>
+          <Statistic title="매출 (세금계산서 발행 공급가액)" value={s?.sales.invoiced_amount ?? 0} suffix="원" />
+          <div style={{ color: "#64748b" }}>발행 {s?.sales.invoices ?? 0}건</div>
+        </Card>
+      </Col>
+      <Col xs={24} sm={12} lg={8}>
+        <Card hoverable onClick={() => nav("/shipping/dispatch")}>
+          <Statistic title="출하 완료" value={s?.shipping.shipped ?? 0} suffix="건" />
+          <div style={{ color: "#64748b" }}>진행 중 {s?.shipping.in_progress ?? 0}건 · 운반비 {Math.round(s?.shipping.freight ?? 0).toLocaleString()}원</div>
+        </Card>
+      </Col>
+      <Col xs={24} sm={12} lg={8}>
+        <Card hoverable onClick={() => nav("/cost/orders")}>
+          <Statistic title="실제 원가율 (생산 완료 수주)" value={s?.cost.cost_rate == null ? "-" : (s.cost.cost_rate * 100).toFixed(1)}
+            suffix={s?.cost.cost_rate == null ? "" : "%"} valueStyle={{ color: (s?.cost.cost_rate ?? 0) > 0.85 ? "#dc2626" : undefined }} />
+          <div style={{ color: "#64748b" }}>
+            이익 {Math.round(s?.cost.profit ?? 0).toLocaleString()}원 · 표준 대비 {(s?.cost.variance ?? 0) > 0 ? "+" : ""}{Math.round(s?.cost.variance ?? 0).toLocaleString()}원
+          </div>
+        </Card>
       </Col>
     </Row>
   );

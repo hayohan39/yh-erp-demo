@@ -5,7 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Defect, IfMessage, ProductionResult, SalesOrder, SchedulePlan, WorkOrder
+from app.models import Defect, IfMessage, ProductionResult, SalesOrder, SchedulePlan, Shipment, TaxInvoice, WorkOrder
+from app.services import costing
 
 router = APIRouter(prefix="/api/dashboard", tags=["경영정보"])
 
@@ -36,8 +37,25 @@ def summary(db: Session = Depends(get_db)):
                func.coalesce(func.sum(SchedulePlan.saved_paper_kg), 0))
         .where(SchedulePlan.status == "CONFIRMED")
     ).one()
+    inv_supply, inv_cnt = db.execute(
+        select(func.coalesce(func.sum(TaxInvoice.supply_amount), 0), func.count())
+        .where(TaxInvoice.status == "ISSUED")).one()
+    shipped = db.execute(select(func.count(), func.coalesce(func.sum(Shipment.freight_amount), 0))
+                         .where(Shipment.status == "SHIPPED")).one()
+    costs = [c for c in costing.cost_list(db) if c["sales"]]
+    sales_sum = sum(c["sales"] for c in costs)
     return {
         "month": month_start.strftime("%Y-%m"),
+        "sales": {"invoiced_amount": float(inv_supply), "invoices": inv_cnt},
+        "shipping": {"shipped": shipped[0], "freight": float(shipped[1]),
+                     "in_progress": db.scalar(select(func.count()).select_from(Shipment)
+                                              .where(Shipment.status != "SHIPPED"))},
+        "cost": {
+            "orders": len(costs),
+            "cost_rate": sum(c["act_cost"] for c in costs) / sales_sum if sales_sum else None,
+            "profit": sum(c["profit"] for c in costs),
+            "variance": sum(c["variance"] for c in costs),
+        },
         "orders": {"count": order_cnt, "amount": float(order_amt)},
         "order_status": {s: c for s, c in status_rows},
         "production": {

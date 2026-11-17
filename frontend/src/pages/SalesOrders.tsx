@@ -1,4 +1,5 @@
-import { Table, Tag } from "antd";
+import { Table } from "antd";
+import { OrderStatus } from "../status";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
@@ -24,7 +25,7 @@ export default function SalesOrders() {
         { title: "납기", dataIndex: "due_date" },
         { title: "품목수", dataIndex: "line_count", align: "right" },
         { title: "금액", dataIndex: "total_amount", align: "right", render: (v: number) => v.toLocaleString() },
-        { title: "상태", dataIndex: "status", render: (v: string) => <Tag color="blue">{v}</Tag> },
+        { title: "상태", dataIndex: "status", render: (v: string) => <OrderStatus s={v} /> },
       ]}
     />
   );
