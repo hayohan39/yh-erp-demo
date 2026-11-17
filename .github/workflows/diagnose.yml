@@ -1,0 +1,41 @@
+name: Diagnose
+
+# 데모 주소 접속 점검: 외부(GitHub 러너)에서 80/443 포트와 웹 응답을 확인하고,
+# 서버 안에서 컨테이너·포트·방화벽 상태를 출력한다. Actions 탭 → Run workflow.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**"]
+    paths: [".github/workflows/diagnose.yml"]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      TARGET: ${{ secrets.DEPLOY_USER || 'ubuntu' }}@${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: 외부에서 포트 확인
+        run: |
+          for p in 22 80 443; do
+            if timeout 8 bash -c "</dev/tcp/$HOST/$p" 2>/dev/null; then echo "port $p: OPEN"; else echo "port $p: CLOSED/TIMEOUT"; fi
+          done
+          echo "--- http://HOST/ ---"
+          curl -sS -o /dev/null -m 15 -w "HTTP %{http_code} in %{time_total}s\n" "http://$HOST/" || echo "HTTP 요청 실패"
+          curl -sS -m 15 "http://$HOST/api/health" || echo "health 요청 실패"
+      - name: 서버 내부 상태
+        if: always()
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_deploy "$TARGET" 'bash -s' <<'SH'
+          cd ~/yh-erp-demo || exit 1
+          echo "--- compose ps ---"; sudo docker compose ps
+          echo "--- listening ---"; sudo ss -ltnp | grep -E ":(80|443|8000|8100)\b" || echo "80 포트 리슨 없음"
+          echo "--- localhost ---"; curl -sS -m 5 -o /dev/null -w "HTTP %{http_code}\n" http://localhost/ ; curl -sS -m 5 http://localhost/api/health; echo
+          echo "--- ufw ---"; sudo ufw status || true
+          echo "--- iptables INPUT ---"; sudo iptables -S INPUT | head -20
+          echo "--- public ip (instance view) ---"; curl -sS -m 5 https://checkip.amazonaws.com || true
+          echo "--- web logs ---"; sudo docker compose logs --tail 20 web
+          SH
