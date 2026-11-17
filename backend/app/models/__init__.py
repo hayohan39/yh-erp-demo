@@ -8,3 +8,8 @@ from app.models.quality import Defect  # noqa: F401
 from app.models.sales import SalesOrder, SalesOrderLine  # noqa: F401
 from app.models.scheduling import CorrugatorRun, RunSlot, SchedulePlan  # noqa: F401
 from app.models.shipping import Shipment, ShipmentLine, TaxInvoice  # noqa: F401
+from app.models.ops import (  # noqa: F401
+    Claim, CostRate, DevCost, Expense, InspectionCert, ItemSpec, MonthlyStat, OrderAllocation, OutsourceOrder,
+    PalletMove, PaperPolicy, PaperRequirement, PriceHistory, PurchaseOrder, Receipt, StockBalance, StockMove,
+    SubMaterial, Tooling, Warehouse,
+)
