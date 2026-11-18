@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import models  # noqa: F401 - 테이블 등록
 from app.api import (
-    cost, cost_ext, dashboard, interface, inventory, master, master_ext, material, mis, monitor, ops_ext, production,
+    auth, cost, cost_ext, dashboard, interface, inventory, master, master_ext, material, mis, monitor, ops_ext, production,
     quality, sales, sales_ext, scheduling, scheduling_ext, settlement, shipping, system,
 )
 from app.config import settings
@@ -16,6 +16,7 @@ from app.interfaces import handlers  # noqa: F401 - I/F 핸들러 등록
 from app.services import settlement as _settlement, shipping as _shipping  # noqa: F401 - 콜백 핸들러 등록
 from app.seed import seed
 from app.services import events
+from app.services.auth import init_auth
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +26,8 @@ async def lifespan(_: FastAPI):
     events.bind_loop(asyncio.get_running_loop())
     await asyncio.to_thread(wait_for_db, settings.db_connect_retries)
     Base.metadata.create_all(engine)
+    with SessionLocal() as db:
+        init_auth(db)  # 사용자 테이블 + 기본 관리자(admin/admin)
     if settings.seed_on_startup:
         with SessionLocal() as db:
             seed(db)
@@ -38,7 +41,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (system.router, interface.router, master.router, sales.router, scheduling.router, production.router,
+for r in (auth.router, system.router, interface.router, master.router, sales.router, scheduling.router, production.router,
           quality.router, dashboard.router, monitor.router, shipping.router, settlement.router, cost.router,
           master_ext.router, inventory.router, material.router, sales_ext.router, ops_ext.shipping_router,
           ops_ext.production_router, ops_ext.quality_router, mis.router, scheduling_ext.router, cost_ext.router):

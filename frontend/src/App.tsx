@@ -14,6 +14,8 @@ import ProductionBoard from "./pages/ProductionBoard";
 import Defects from "./pages/Defects";
 import DefectAlerts from "./components/DefectAlerts";
 import LiveStatus from "./components/LiveStatus";
+import UserMenu from "./components/UserMenu";
+import Settings from "./pages/Settings";
 import SimulatorDock from "./components/SimulatorDock";
 // 3D 화면(three.js)은 해당 메뉴를 열 때만 내려받는다.
 const EquipmentMonitor = lazy(() => import("./pages/EquipmentMonitor"));
@@ -47,7 +49,7 @@ export default function App() {
   useEffect(() => {
     if (openKey) setOpenKeys((ks) => (ks.includes(openKey) ? ks : [...ks, openKey]));
   }, [openKey]);
-  const title = findLabel(pathname);
+  const title = findLabel(pathname) ?? (pathname === "/settings" ? "개인 설정" : undefined);
   useEffect(() => { document.title = title ? `${title} · YH 통합 ERP` : "YH 통합 ERP"; }, [title]);
 
   return (
@@ -94,6 +96,7 @@ export default function App() {
             {title ?? ""}
           </Typography.Title>
           <LiveStatus />
+          <UserMenu />
         </Header>
         {narrow && !collapsed && (
           <div onClick={() => setCollapsed(true)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 15 }} />
@@ -163,6 +166,7 @@ export default function App() {
             <Route path="/quality/defects" element={<Defects />} />
             <Route path="/system/if-monitor" element={<IfMonitor />} />
             <Route path="/system/simulator" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Placeholder />} />
           </Routes>
           </Suspense>
