@@ -65,3 +65,19 @@ def test_quote(client):
 def test_callback_only_for_callback_interfaces(client):
     r = client.post("/api/if/inbound", json={"if_id": "IF-MES-01", "message_id": "x1", "source": "MES", "payload": {}})
     assert r.status_code == 400
+
+
+def test_cycle_tracks_order_through_stages(client):
+    assert client.get("/api/dashboard/cycle").json()["stages"] == {}
+    pf.test_order_to_production_flow(client)
+    order_no = client.get("/api/sales/orders").json()[0]["order_no"]
+    c = client.get("/api/dashboard/cycle", params={"order_no": order_no}).json()
+    assert c["stages"] == {"ship_request": 1}
+    assert c["orders"][0]["order_no"] == order_no and c["orders"][0]["stage"] == "ship_request"
+    f = c["focus"]
+    assert f["work_orders"]["total"] > 0 and f["work_orders"]["done"] == f["work_orders"]["total"]
+    assert f["shipment"] is None and f["invoice"] is None
+    client.post("/api/shipping/requests", json={"order_no": order_no})
+    f = client.get("/api/dashboard/cycle", params={"order_no": order_no}).json()["focus"]
+    assert f["stage"] == "delivery" and f["shipment"]["status"] == "REQUESTED"
+    assert client.get("/api/dashboard/cycle", params={"order_no": "없음"}).json()["focus"] is None

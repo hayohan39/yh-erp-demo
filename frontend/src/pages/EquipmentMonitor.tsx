@@ -4,7 +4,7 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
-import DemoActions from "../components/DemoActions";
+import { useSimSpeed } from "../api/useSimSpeed";
 import { Movers, Stage, webglAvailable } from "../components/three/stage";
 import FactoryMap, { Factory, IfEvent, Machine } from "./FactoryMap";
 import {
@@ -60,7 +60,7 @@ export default function EquipmentMonitor() {
 
 function Equipment3D({ toggle }: { toggle: ReactNode }) {
   const [f, setF] = useState<Factory>();
-  const [speed, setSpeed] = useState(1);
+  const speed = useSimSpeed();
   const [offset, setOffset] = useState(0);
   const [flash, setFlash] = useState<Record<string, number>>({});
   const [log, setLog] = useState<LogRow[]>([]);
@@ -235,7 +235,7 @@ function Equipment3D({ toggle }: { toggle: ReactNode }) {
   return (
     <div>
       <Card size="small" style={{ marginBottom: 12 }} styles={{ body: { display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "space-between" } }}>
-        <DemoActions onSpeed={setSpeed} />
+        <Typography.Text type="secondary">설비·PMS·오토콘 신호를 실시간으로 받아 그립니다 · 시연 진행은 오른쪽 아래 시뮬레이터 창에서</Typography.Text>
         {toggle}
       </Card>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>

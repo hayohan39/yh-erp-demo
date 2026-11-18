@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Defect, IfMessage, ProductionResult, SalesOrder, SchedulePlan, Shipment, TaxInvoice, WorkOrder
+from app.models import Defect, IfMessage, Partner, ProductionResult, SalesOrder, SchedulePlan, Shipment, TaxInvoice, WorkOrder
 from app.services import costing
 
 router = APIRouter(prefix="/api/dashboard", tags=["경영정보"])
@@ -67,4 +67,54 @@ def summary(db: Session = Depends(get_db)):
         "scheduling": {"saved_amount": float(saved[0]), "saved_paper_kg": float(saved[1])},
         "defects_open": db.scalar(select(func.count()).select_from(Defect).where(Defect.status == "OPEN")),
         "interfaces": {status: cnt for status, cnt in if_rows},
+    }
+
+
+# 시뮬레이터 창의 테스트 사이클: 수주 상태 → 단계. 단계 키는 프런트(SimulatorDock)와 맞춘다.
+CYCLE_STAGE = {
+    "RECEIVED": "order", "PLANNED": "production", "IN_PROD": "production", "PRODUCED": "ship_request",
+    "SHIPPING": "delivery", "SHIPPED": "close", "INVOICING": "invoice", "CLOSED": "done",
+}
+
+
+@router.get("/cycle")
+def cycle(order_no: str | None = None, db: Session = Depends(get_db)):
+    """시뮬레이터 창: 단계별 수주 건수, 추적할 수 있는 최근 수주, 추적 수주의 진행 상세."""
+    stages: dict[str, int] = {}
+    for s, c in db.execute(select(SalesOrder.status, func.count()).group_by(SalesOrder.status)).all():
+        k = CYCLE_STAGE.get(s)
+        if k:
+            stages[k] = stages.get(k, 0) + c
+    partners = {p.code: p.name for p in db.scalars(select(Partner))}
+
+    def brief(o: SalesOrder) -> dict:
+        return {"order_no": o.order_no, "customer_name": partners.get(o.customer_code, o.customer_code),
+                "status": o.status, "stage": CYCLE_STAGE.get(o.status), "total_amount": o.total_amount,
+                "created_at": o.created_at}
+
+    open_q = select(SalesOrder).where(SalesOrder.status != "CLOSED").order_by(SalesOrder.id.desc()).limit(30)
+    done_q = select(SalesOrder).where(SalesOrder.status == "CLOSED").order_by(SalesOrder.id.desc()).limit(5)
+    orders = [brief(o) for o in db.scalars(open_q)] + [brief(o) for o in db.scalars(done_q)]
+
+    focus = None
+    o = db.scalar(select(SalesOrder).where(SalesOrder.order_no == order_no)) if order_no else None
+    if o:
+        wos = list(db.scalars(select(WorkOrder).where(WorkOrder.order_id == o.id)))
+        sh = db.scalar(select(Shipment).where(Shipment.order_id == o.id).order_by(Shipment.id.desc()))
+        inv = db.scalar(select(TaxInvoice).where(TaxInvoice.order_id == o.id).order_by(TaxInvoice.id.desc()))
+        focus = {
+            **brief(o),
+            "qty": sum(ln.qty for ln in o.lines), "due_date": o.due_date,
+            "work_orders": {"total": len(wos), "done": sum(w.status == "DONE" for w in wos),
+                            "in_prod": sum(w.status == "IN_PROD" for w in wos)},
+            "shipment": sh and {"shipment_no": sh.shipment_no, "status": sh.status, "vehicle_no": sh.vehicle_no,
+                                "carrier_name": sh.carrier_name},
+            "invoice": inv and {"invoice_no": inv.invoice_no, "status": inv.status,
+                                "nts_approval_no": inv.nts_approval_no, "total_amount": inv.total_amount},
+        }
+    return {
+        "stages": stages,
+        "orders": orders,
+        "focus": focus,
+        "defects_open": db.scalar(select(func.count()).select_from(Defect).where(Defect.status == "OPEN")),
     }

@@ -2,7 +2,7 @@ import { Card, Col, List, Row, Statistic, Tag, Typography } from "antd";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { useEvents } from "../api/useEvents";
-import DemoActions from "../components/DemoActions";
+import { useSimSpeed } from "../api/useSimSpeed";
 import { Pt, TokenShape, polyD, textW, useTokens } from "../components/anim";
 
 export interface Current { wo_no: string; item_name: string; qty: number; started_at: string; expected_minutes: number; print_colors: number }
@@ -119,7 +119,7 @@ function Header({ x, y, title, sys, m }: { x: number; y: number; title: string; 
 /** 설비 모니터링의 평면도 보기(3D를 쓸 수 없을 때의 대체 화면이기도 하다). */
 export default function FactoryMap({ extra }: { extra?: ReactNode }) {
   const [f, setF] = useState<Factory>();
-  const [speed, setSpeed] = useState(1);
+  const speed = useSimSpeed();
   const [offset, setOffset] = useState(0);
   const [flash, setFlash] = useState<Record<string, number>>({});
   const [log, setLog] = useState<LogRow[]>([]);
@@ -227,8 +227,8 @@ export default function FactoryMap({ extra }: { extra?: ReactNode }) {
     <div>
       <style>{css}</style>
       <Card size="small" style={{ marginBottom: 12 }} styles={{ body: { display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", justifyContent: "space-between" } }}>
-        <DemoActions onSpeed={setSpeed} />
-        {extra ?? <Typography.Text type="secondary">설비·PMS·오토콘 신호를 실시간으로 받아 그립니다</Typography.Text>}
+        <Typography.Text type="secondary">설비·PMS·오토콘 신호를 실시간으로 받아 그립니다 · 시연 진행은 오른쪽 아래 시뮬레이터 창에서</Typography.Text>
+        {extra}
       </Card>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {[
