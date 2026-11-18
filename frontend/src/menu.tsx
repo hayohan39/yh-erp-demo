@@ -1,5 +1,5 @@
 import {
-  BarChartOutlined, ClusterOutlined, ControlOutlined, CalculatorOutlined, CarOutlined, DashboardOutlined,
+  BarChartOutlined, ClusterOutlined, CalculatorOutlined, CarOutlined, DashboardOutlined,
   DatabaseOutlined, ExperimentOutlined, ApiOutlined, ScheduleOutlined, ShoppingCartOutlined,
   ToolOutlined, InboxOutlined, RadarChartOutlined,
 } from "@ant-design/icons";
@@ -133,7 +133,6 @@ export const MENU: MenuNode[] = [
 /** 사이드바 하단 '관리자용' 구역: 시연 진행·연동 점검용 도구(업무 메뉴와 분리). */
 export const ADMIN_MENU: MenuNode[] = [
   { key: "/system/if-monitor", label: "I/F 모니터", icon: <ApiOutlined /> },
-  { key: "/system/simulator", label: "시뮬레이터 제어", icon: <ControlOutlined /> },
 ];
 
 export function findLabel(path: string, nodes: MenuNode[] = [...MENU, ...ADMIN_MENU]): string | undefined {

@@ -30,3 +30,26 @@ body { background: #f5f5f5; -webkit-font-smoothing: antialiased; }
   .ant-card-head-wrapper { flex-wrap: wrap; }
   .ant-card-extra { margin-inline-start: 0 !important; padding-bottom: 8px; }
 }
+
+/* 시뮬레이터 창: 모든 화면 오른쪽 아래에 뜬다. 헤더(10) 위, 모바일 사이드바 덮개(15)·사이드바(20) 아래.
+   3D 맵 라벨은 맵 영역 안(isolation)에서만 쌓이므로 이 창을 덮지 않는다. */
+.simdock-fab { position: fixed; right: 16px; bottom: 16px; z-index: 12; }
+.simdock-fab .ant-btn { box-shadow: 0 6px 18px rgba(22, 119, 255, .35); }
+.simdock-pulse { animation: simdock-pulse 1.6s ease-in-out infinite; }
+@keyframes simdock-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(250, 140, 22, .55); } 50% { box-shadow: 0 0 0 8px rgba(250, 140, 22, 0); } }
+.simdock-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 12; width: 380px;
+  max-height: calc(100vh - 96px); max-height: calc(100dvh - 96px);
+  display: flex; flex-direction: column; background: #fff; border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, .22); border: 1px solid #e5e7eb;
+}
+.simdock-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-bottom: 1px solid #f0f0f0; }
+.simdock-body { padding: 10px 14px 6px; overflow-y: auto; overscroll-behavior: contain; }
+.simdock-decision { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: #fff7e6; border: 1px solid #ffd591; color: #613400; }
+.simdock-alert { margin-bottom: 10px; padding: 6px 10px; border-radius: 8px; background: #fff1f0; border: 1px solid #ffccc7; color: #a8071a; font-size: 12px; }
+.ant-layout-content { padding-bottom: 80px !important; }
+@media (max-width: 768px) {
+  .simdock-fab { right: 12px; bottom: 12px; }
+  .simdock-fab-text { display: inline-block; max-width: calc(100vw - 110px); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  .simdock-panel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100dvh - 72px); }
+}

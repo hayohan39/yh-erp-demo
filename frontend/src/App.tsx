@@ -5,7 +5,6 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { ADMIN_MENU, MENU, findLabel } from "./menu";
 import Dashboard from "./pages/Dashboard";
 import IfMonitor from "./pages/IfMonitor";
-import SimulatorControl from "./pages/SimulatorControl";
 import SalesOrders from "./pages/SalesOrders";
 import MasterTable from "./pages/MasterTable";
 import Placeholder from "./pages/Placeholder";
@@ -15,6 +14,7 @@ import ProductionBoard from "./pages/ProductionBoard";
 import Defects from "./pages/Defects";
 import DefectAlerts from "./components/DefectAlerts";
 import LiveStatus from "./components/LiveStatus";
+import SimulatorDock from "./components/SimulatorDock";
 // 3D 화면(three.js)은 해당 메뉴를 열 때만 내려받는다.
 const EquipmentMonitor = lazy(() => import("./pages/EquipmentMonitor"));
 const FacilityMonitor = lazy(() => import("./pages/FacilityMonitor"));
@@ -53,6 +53,7 @@ export default function App() {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <DefectAlerts />
+      <SimulatorDock />
       <Sider
         width={220} theme="dark" breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
@@ -161,7 +162,7 @@ export default function App() {
             <Route path="/production/board" element={<ProductionBoard />} />
             <Route path="/quality/defects" element={<Defects />} />
             <Route path="/system/if-monitor" element={<IfMonitor />} />
-            <Route path="/system/simulator" element={<SimulatorControl />} />
+            <Route path="/system/simulator" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Placeholder />} />
           </Routes>
           </Suspense>
