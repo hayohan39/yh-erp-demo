@@ -17,6 +17,7 @@ import LiveStatus from "./components/LiveStatus";
 import UserMenu from "./components/UserMenu";
 import Settings from "./pages/Settings";
 import SimulatorDock from "./components/SimulatorDock";
+import { useAppTheme } from "./theme";
 // 3D 화면(three.js)은 해당 메뉴를 열 때만 내려받는다.
 const EquipmentMonitor = lazy(() => import("./pages/EquipmentMonitor"));
 const FacilityMonitor = lazy(() => import("./pages/FacilityMonitor"));
@@ -39,6 +40,8 @@ const { Sider, Header, Content } = Layout;
 
 export default function App() {
   const nav = useNavigate();
+  const { theme } = useAppTheme();
+  const menuTheme = theme.siderDark ? "dark" : "light";
   const { pathname } = useLocation();
   const openKey = MENU.find((m) => m.children?.some((c) => c.key === pathname))?.key;
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 992);
@@ -57,21 +60,22 @@ export default function App() {
       <DefectAlerts />
       <SimulatorDock />
       <Sider
-        width={220} theme="dark" breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
+        width={232} theme={menuTheme} breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
         className="app-sider"
         style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, overflow: "auto", zIndex: 20 }}
       >
         {/* 접힌 상태(폭 0)에서 Menu를 그리면 펼쳐 둔 하위 메뉴가 팝업으로 본문 위에 떠 있는 문제가 있어 숨긴다 */}
         {!collapsed && <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-          <div style={{ color: "#fff", padding: "12px 8px 12px 20px", fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span>YH 통합 ERP</span>
+          <div className="app-brand">
+            <span className="app-brand-name"><span className="app-brand-mark">YH</span>통합 ERP</span>
             <Button type="text" aria-label="메뉴 닫기" title="메뉴 닫기" onClick={() => setCollapsed(true)}
-              icon={<MenuFoldOutlined style={{ fontSize: 18, color: "rgba(255,255,255,.75)" }} />} />
+              icon={<MenuFoldOutlined className="app-brand-fold" style={{ fontSize: 18 }} />} />
           </div>
           <Menu
-            theme="dark"
+            theme={menuTheme}
             mode="inline"
+            className="app-menu"
             selectedKeys={[pathname]}
             openKeys={openKeys}
             onOpenChange={setOpenKeys}
@@ -79,20 +83,21 @@ export default function App() {
             onClick={go}
           />
           <div style={{ marginTop: "auto", paddingTop: 16 }}>
-            <div style={{ margin: "0 16px", padding: "10px 4px 4px", borderTop: "1px solid rgba(255,255,255,.12)", color: "rgba(255,255,255,.45)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
+            <div className="app-admin-label">
               <span>관리자용</span><span>시연·연동 점검</span>
             </div>
-            <Menu theme="dark" mode="inline" selectedKeys={[pathname]} items={ADMIN_MENU} onClick={go}
+            <Menu theme={menuTheme} className="app-menu" mode="inline" selectedKeys={[pathname]} items={ADMIN_MENU} onClick={go}
               style={{ background: "transparent", paddingBottom: 12 }} />
           </div>
         </div>}
       </Sider>
       <Layout>
-        <Header style={{ background: "#fff", padding: "0 16px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, position: "sticky", top: 0, zIndex: 10 }}>
+        <Header className="app-header" style={{ padding: "0 16px", display: "flex", alignItems: "center", gap: 8, position: "sticky", top: 0, zIndex: 10 }}>
           {/* 닫기 버튼은 사이드바 안(제목 옆)에 있고, 사이드바가 닫혀 있을 때만 여기서 연다 */}
           {collapsed && <Button type="text" aria-label="메뉴 열기" title="메뉴 열기" onClick={() => setCollapsed(false)}
             icon={<MenuUnfoldOutlined style={{ fontSize: 18 }} />} />}
-          <Typography.Title level={4} style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {collapsed && !narrow && <span className="app-header-brand">YH 통합 ERP</span>}
+          <Typography.Title level={4} className="app-title" style={{ margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {title ?? ""}
           </Typography.Title>
           <LiveStatus />
