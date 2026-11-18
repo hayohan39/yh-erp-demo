@@ -1,4 +1,4 @@
-def _login(client, u="admin", p="admin1234"):
+def _login(client, u="admin", p="admin"):
     r = client.post("/api/auth/login", json={"username": u, "password": p})
     return r
 

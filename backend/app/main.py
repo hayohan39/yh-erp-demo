@@ -27,7 +27,7 @@ async def lifespan(_: FastAPI):
     await asyncio.to_thread(wait_for_db, settings.db_connect_retries)
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
-        init_auth(db)  # 사용자 테이블 + 기본 관리자(admin/admin1234)
+        init_auth(db)  # 사용자 테이블 + 기본 관리자(admin/admin)
     if settings.seed_on_startup:
         with SessionLocal() as db:
             seed(db)

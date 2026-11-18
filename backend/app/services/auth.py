@@ -14,7 +14,8 @@ from app.config import settings
 from app.db import engine, get_db
 from app.models.auth import AppUser, AuthBase
 
-DEFAULT_ADMIN = ("admin", "admin1234")
+DEFAULT_ADMIN = ("admin", "admin")
+_SECRET = (settings.auth_secret or secrets.token_hex(32)).encode()
 _ITER = 120_000
 
 
@@ -38,7 +39,7 @@ def _b64(b: bytes) -> str:
 
 
 def _sign(body: str) -> str:
-    return _b64(hmac.new(settings.auth_secret.encode(), body.encode(), hashlib.sha256).digest())
+    return _b64(hmac.new(_SECRET, body.encode(), hashlib.sha256).digest())
 
 
 def issue_token(user: AppUser) -> str:
@@ -58,7 +59,7 @@ def _read_token(token: str) -> int | None:
 
 
 def init_auth(db: Session) -> None:
-    """사용자 테이블을 만들고, 사용자가 하나도 없으면 기본 관리자(admin/admin1234)를 넣는다."""
+    """사용자 테이블을 만들고, 사용자가 하나도 없으면 기본 관리자(admin/admin)를 넣는다."""
     AuthBase.metadata.create_all(engine)
     if not db.scalar(select(AppUser).limit(1)):
         db.add(AppUser(username=DEFAULT_ADMIN[0], password_hash=hash_password(DEFAULT_ADMIN[1]),
