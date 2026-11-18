@@ -48,13 +48,21 @@ jobs:
         run: |
           for i in $(seq 1 60); do curl -fsS localhost:8080/api/health && exit 0; sleep 5; done
           docker compose logs; exit 1
+      - name: 로그인 (시뮬레이터 제어 API는 로그인 토큰 필요)
+        run: |
+          TOKEN=$(curl -fsS -X POST localhost:8080/api/auth/login -H 'content-type: application/json' \
+            -d '{"username":"admin","password":"admin"}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOKEN"
+          echo "AUTH=Authorization: Bearer $TOKEN" >> "$GITHUB_ENV"
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/sim/status)" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8080/api/admin/reset)" = "403"
       - name: OMS 주문 → 수주 등록 확인
         run: |
-          curl -fsS -X POST "localhost:8080/api/sim/oms/order?large=true"
+          curl -fsS -H "$AUTH" -X POST "localhost:8080/api/sim/oms/order?large=true"
           test "$(curl -fsS localhost:8080/api/sales/orders | python3 -c 'import json,sys;print(len(json.load(sys.stdin)))')" = "1"
       - name: 스케쥴 확정 → 설비 실적 → 생산완료 확인
         run: |
-          curl -fsS -X POST localhost:8080/api/sim/speed -H 'content-type: application/json' -d '{"speed":60}'
+          curl -fsS -H "$AUTH" -X POST localhost:8080/api/sim/speed -H 'content-type: application/json' -d '{"speed":60}'
           PLAN=$(curl -fsS -X POST localhost:8080/api/scheduling/plans | python3 -c 'import json,sys;print(json.load(sys.stdin)["plan_no"])')
           curl -fsS -X POST "localhost:8080/api/scheduling/plans/$PLAN/confirm"
           for i in $(seq 1 60); do
