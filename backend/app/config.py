@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     # ERP → 레거시 송신 대상. 데모에서는 I/F 시뮬레이터의 수신 엔드포인트.
     legacy_outbound_url: str = ""
+    # 로그인 토큰 서명 키. 서버에서는 .env의 AUTH_SECRET으로 바꿔 두는 것을 권장.
+    auth_secret: str = "yh-erp-demo-auth-secret"
+    auth_token_hours: int = 12
 
 
 settings = Settings()

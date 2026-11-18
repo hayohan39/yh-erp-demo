@@ -18,22 +18,37 @@ export class ApiError extends Error {
   toString() { return this.message; }
 }
 
+/** 로그인 토큰. auth.tsx가 로그인·로그아웃 때 갱신한다. */
+export const TOKEN_KEY = "yh-erp-token";
+export function getToken(): string | null {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+
 export async function api<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const token = getToken();
   try {
     res = await fetch(path, {
       ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
     });
   } catch {
     throw new ApiError(0, "서버에 연결할 수 없습니다. 네트워크 상태를 확인하세요.");
   }
+  // 토큰 만료 등: 로그인 화면으로 돌려보낸다 (로그인 요청 자체의 실패는 제외)
+  if (res.status === 401 && token && !path.startsWith("/api/auth/login")) window.dispatchEvent(new Event("auth:expired"));
   if (!res.ok) throw new ApiError(res.status, errorText(res.status, await res.text()));
   return res.json() as Promise<T>;
 }
 
 export const post = <T = unknown>(path: string, body?: unknown) =>
   api<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+export const send = <T = unknown>(method: "PUT" | "PATCH" | "DELETE", path: string, body?: unknown) =>
+  api<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 /** message.error 등에 넘길 오류 문구. */
 export const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
