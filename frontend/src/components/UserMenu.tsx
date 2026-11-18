@@ -18,7 +18,7 @@ export default function UserMenu() {
       onClick: ({ key }) => { if (key === "settings") nav("/settings"); if (key === "logout") logout(); },
     }}>
       <span style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", marginLeft: 8 }}>
-        <Avatar size="small" icon={<UserOutlined />} style={{ background: "#1d4ed8" }} />
+        <Avatar size="small" icon={<UserOutlined />} className="user-avatar" />
         <span className="user-menu-name">{user.name}</span>
       </span>
     </Dropdown>

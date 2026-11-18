@@ -1,6 +1,8 @@
 /* 전역 스타일: 브라우저 기본 여백 제거, 작은 화면에서 큰 숫자·표 가독성 보정 */
 html, body { margin: 0; padding: 0; }
-body { background: #f5f5f5; -webkit-font-smoothing: antialiased; }
+body { background: #f3f4f5; -webkit-font-smoothing: antialiased; font-family: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif; }
+/* 숫자 자리 맞춤(금액·수량 표가 흔들리지 않게) */
+.ant-statistic-content, .ant-table-cell, .stage-cell .n { font-variant-numeric: tabular-nums; }
 
 /* 사이드바 높이: 모바일 브라우저에서 100vh는 주소창이 숨었을 때 기준이라 화면보다 길어
    맨 아래 '관리자용' 메뉴가 화면 밖으로 밀려났다. 실제 보이는 높이(dvh)를 쓰고, 미지원 브라우저는 100vh. */
@@ -35,7 +37,7 @@ body { background: #f5f5f5; -webkit-font-smoothing: antialiased; }
 /* 시뮬레이터 창: 모든 화면 오른쪽 아래에 뜬다. 헤더(10) 위, 모바일 사이드바 덮개(15)·사이드바(20) 아래.
    3D 맵 라벨은 맵 영역 안(isolation)에서만 쌓이므로 이 창을 덮지 않는다. */
 .simdock-fab { position: fixed; right: 16px; bottom: 16px; z-index: 12; }
-.simdock-fab .ant-btn { box-shadow: 0 6px 18px rgba(22, 119, 255, .35); }
+.simdock-fab .ant-btn { box-shadow: 0 6px 18px rgba(11, 114, 133, .35); }
 .simdock-pulse { animation: simdock-pulse 1.6s ease-in-out infinite; }
 @keyframes simdock-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(250, 140, 22, .55); } 50% { box-shadow: 0 0 0 8px rgba(250, 140, 22, 0); } }
 .simdock-panel {
@@ -54,3 +56,33 @@ body { background: #f5f5f5; -webkit-font-smoothing: antialiased; }
   .simdock-fab-text { display: inline-block; max-width: calc(100vw - 110px); overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   .simdock-panel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100dvh - 72px); }
 }
+
+/* ───────── 테마 공통: 셸(사이드바·헤더) ───────── */
+.app-brand { padding: 0 8px 0 18px; height: 56px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+.app-brand-name { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.app-brand-mark { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0; }
+.app-admin-label { margin: 0 16px; padding: 10px 4px 4px; font-size: 12px; display: flex; justify-content: space-between; }
+.app-header-brand { font-weight: 700; white-space: nowrap; margin-right: 8px; }
+.app-title.ant-typography { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.app-menu.ant-menu { border-inline-end: none !important; }
+.ant-card .ant-card-head-title { font-weight: 650; }
+.ant-table-thead > tr > th { font-weight: 600 !important; }
+
+/* 그래파이트 테마 세부 */
+body { background: #f3f4f5; }
+.app-brand { color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+.app-brand-mark { background: #0b7285; color: #fff; border-radius: 2px; }
+.app-brand-fold { color: rgba(255,255,255,.6); }
+.app-header { background: #fff !important; border-bottom: 1px solid #e2e4e7; }
+.user-avatar { background: #22262b !important; }
+.app-menu .ant-menu-item-selected { box-shadow: inset 3px 0 0 #15aabf; }
+.app-menu .ant-menu-submenu-title, .app-menu > .ant-menu-item { font-weight: 500; }
+.app-admin-label { border-top: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.4); }
+.ant-card { border: 1px solid #e2e4e7; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.ant-card .ant-card-head { border-bottom: 1px solid #eceef0; }
+.ant-card .ant-card-head-title { text-transform: none; font-size: 13px; letter-spacing: .01em; }
+.ant-statistic-title { color: #5c636b; font-weight: 600; letter-spacing: .02em; }
+.kpi-card .ant-statistic-content-value { font-weight: 600; }
+.kpi-card { border-left: 3px solid #0b7285 !important; }
+.ant-table-thead > tr > th { border-bottom: 2px solid #22262b !important; font-size: 12px; }
+.ant-table-tbody > tr:nth-child(even) > td { background: #fafbfb; }
