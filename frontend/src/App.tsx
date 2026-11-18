@@ -17,7 +17,6 @@ import LiveStatus from "./components/LiveStatus";
 import UserMenu from "./components/UserMenu";
 import Settings from "./pages/Settings";
 import SimulatorDock from "./components/SimulatorDock";
-import { useAppTheme } from "./theme";
 // 3D 화면(three.js)은 해당 메뉴를 열 때만 내려받는다.
 const EquipmentMonitor = lazy(() => import("./pages/EquipmentMonitor"));
 const FacilityMonitor = lazy(() => import("./pages/FacilityMonitor"));
@@ -40,8 +39,6 @@ const { Sider, Header, Content } = Layout;
 
 export default function App() {
   const nav = useNavigate();
-  const { theme } = useAppTheme();
-  const menuTheme = theme.siderDark ? "dark" : "light";
   const { pathname } = useLocation();
   const openKey = MENU.find((m) => m.children?.some((c) => c.key === pathname))?.key;
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 992);
@@ -60,7 +57,7 @@ export default function App() {
       <DefectAlerts />
       <SimulatorDock />
       <Sider
-        width={232} theme={menuTheme} breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
+        width={232} theme="dark" breakpoint="lg" collapsedWidth={0} collapsible collapsed={collapsed} trigger={null}
         onBreakpoint={(b) => { setNarrow(b); setCollapsed(b); }}
         className="app-sider"
         style={{ position: narrow ? "fixed" : "sticky", top: 0, left: 0, overflow: "auto", zIndex: 20 }}
@@ -73,7 +70,7 @@ export default function App() {
               icon={<MenuFoldOutlined className="app-brand-fold" style={{ fontSize: 18 }} />} />
           </div>
           <Menu
-            theme={menuTheme}
+            theme="dark"
             mode="inline"
             className="app-menu"
             selectedKeys={[pathname]}
@@ -86,7 +83,7 @@ export default function App() {
             <div className="app-admin-label">
               <span>관리자용</span><span>시연·연동 점검</span>
             </div>
-            <Menu theme={menuTheme} className="app-menu" mode="inline" selectedKeys={[pathname]} items={ADMIN_MENU} onClick={go}
+            <Menu theme="dark" className="app-menu" mode="inline" selectedKeys={[pathname]} items={ADMIN_MENU} onClick={go}
               style={{ background: "transparent", paddingBottom: 12 }} />
           </div>
         </div>}

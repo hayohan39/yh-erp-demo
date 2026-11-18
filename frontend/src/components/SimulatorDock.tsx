@@ -160,7 +160,7 @@ export default function SimulatorDock() {
               {s.decision.act === "plan" && <div style={{ color: "#8c8c8c", marginTop: 4 }}>계획은 대기 중인 수주 전체로 세웁니다</div>}
             </div>
           )}
-          {isCur && s.auto && <div style={{ color: "#1677ff" }}>{s.auto}</div>}
+          {isCur && s.auto && <div style={{ color: "#0b7285" }}>{s.auto}</div>}
           {isCur && s.key === "done" && (
             <Space wrap size={6} style={{ marginTop: 6 }}>
               <Button size="small" type="primary" icon={<PlusOutlined />} disabled={busy} onClick={() => newOrder(false)}>새 사이클 시작</Button>

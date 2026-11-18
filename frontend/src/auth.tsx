@@ -54,7 +54,7 @@ function Login({ onLogin }: { onLogin: (token: string, u: User) => void }) {
   };
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-      background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)" }}>
+      background: "linear-gradient(135deg, #1b1e22 0%, #22262b 55%, #0b4f5c 100%)" }}>
       <Card style={{ width: "100%", maxWidth: 380, boxShadow: "0 20px 50px rgba(0,0,0,.35)" }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <Typography.Title level={3} style={{ margin: 0 }}>YH 통합 ERP</Typography.Title>
